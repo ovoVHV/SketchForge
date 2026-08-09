@@ -1,0 +1,175 @@
+{
+  "manifest": {
+    "kind": "ck-platform-pack",
+    "schemaVersion": 2,
+    "id": "espressif-arduino",
+    "version": "3.3.7",
+    "vendor": "esp32",
+    "architecture": "esp32",
+    "platformProperties": {
+      "compiler.warning_flags": "-Wall",
+      "name": "Arduino ESP32"
+    },
+    "recipes": [
+      {
+        "id": "recipe.cpp.o",
+        "argv": ["{compiler.path}g++", "-c", "{source_file}", "-o", "{object_file}"],
+        "placeholders": ["compiler.path", "object_file", "source_file"]
+      },
+      {
+        "id": "recipe.c.o",
+        "argv": ["{compiler.path}gcc", "-c", "{source_file}", "-o", "{object_file}"],
+        "placeholders": ["compiler.path", "object_file", "source_file"]
+      },
+      {
+        "id": "recipe.S.o",
+        "argv": ["{compiler.path}gcc", "-x", "assembler-with-cpp", "-c", "{source_file}", "-o", "{object_file}"],
+        "placeholders": ["compiler.path", "object_file", "source_file"]
+      },
+      {
+        "id": "recipe.ar",
+        "argv": ["{compiler.path}ar", "rcs", "{archive_file_path}", "{object_file}"],
+        "placeholders": ["archive_file_path", "compiler.path", "object_file"]
+      },
+      {
+        "id": "recipe.c.combine",
+        "argv": ["{compiler.path}g++", "{object_files}", "{archive_file_path}", "-o", "{build.path}/{build.project_name}.elf"],
+        "placeholders": ["archive_file_path", "build.path", "build.project_name", "compiler.path", "object_files"]
+      }
+    ],
+    "boards": [
+      {
+        "id": "esp32c3",
+        "fqbn": "esp32:esp32:esp32c3",
+        "name": "ESP32-C3 Dev Module",
+        "core": "esp32",
+        "variant": "esp32c3",
+        "properties": {
+          "build.core": "esp32",
+          "build.mcu": "esp32c3",
+          "build.variant": "esp32c3",
+          "name": "ESP32-C3 Dev Module"
+        },
+        "menus": [
+          {
+            "id": "PartitionScheme",
+            "label": "Partition Scheme",
+            "default": "default",
+            "options": [
+              {
+                "id": "default",
+                "label": "Default 4MB",
+                "properties": { "build.partitions": "default" }
+              },
+              {
+                "id": "minimal",
+                "label": "Minimal SPIFFS",
+                "properties": { "build.partitions": "min_spiffs" }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "programmers": [
+      {
+        "id": "esptool",
+        "name": "Esptool",
+        "properties": { "name": "Esptool", "protocol": "esptool" }
+      }
+    ],
+    "tools": [
+      {
+        "id": "esp-riscv",
+        "version": "esp-13.2.0_20240530",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "files": [
+      {
+        "path": "cores/esp32/Arduino.h",
+        "role": "core",
+        "size": 13,
+        "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+      },
+      {
+        "path": "variants/esp32c3/pins_arduino.h",
+        "role": "variant",
+        "size": 22,
+        "sha256": "1b37c33ea473fccf996a44a8c5daeb0ba4009f215de2b173be05648b9d809224"
+      }
+    ],
+    "recipeLowering": {
+      "schemaVersion": 2,
+      "sha256": "e87b3e0dad526a331f7ce5808d060db5e7e8829f2c12f6cc1d1111199bfd4559",
+      "bindings": {
+        "compile": {
+          "c": "recipe.c.o",
+          "cxx": "recipe.cpp.o",
+          "asm": "recipe.S.o"
+        },
+        "archive": "recipe.ar",
+        "link": "recipe.c.combine"
+      },
+      "paths": {
+        "logicalToAction": {
+          "exact": {
+            "core.a": "packs/platform/core.a",
+            "core": "packs/platform/core",
+            "variant": "packs/board/variant"
+          },
+          "prefixes": {
+            "sdk/": "packs/platform/sdk/",
+            "core/": "packs/platform/core/",
+            "variant/": "packs/board/variant/",
+            "runtime/": "packs/toolchain/runtime/"
+          }
+        }
+      },
+      "responseFiles": {
+        "marker": "@",
+        "roles": {
+          "compiler": "compiler-response-file",
+          "linker": "linker-response-file"
+        },
+        "languageFiles": {
+          "c": "c_flags",
+          "cxx": "cpp_flags",
+          "asm": "S_flags"
+        }
+      },
+      "compatibility": {
+        "compiler": {
+          "disableBuiltinCxxIncludes": true,
+          "runtimeIncludes": [
+            { "role": "cxx", "flag": "-isystem" },
+            { "role": "cxx-target", "flag": "-isystem" },
+            { "role": "cxx-backward", "flag": "-isystem" },
+            { "role": "gcc", "flag": "-isystem" },
+            { "role": "gcc-fixed", "flag": "-isystem" },
+            { "role": "sysroot", "flag": "-isystem" }
+          ]
+        },
+        "linker": {
+          "searchPaths": ["sdk/lld-compat"],
+          "responseFiles": ["sdk/lld-compat/ld_flags"],
+          "runtimeLibraryDirectories": "all",
+          "forceLldTargetPrefixes": ["xtensa-"]
+        }
+      },
+      "archive": {
+        "command": "ar",
+        "operation": "rcs",
+        "argumentOrder": ["operation", "output", "inputs", "flags"]
+      },
+      "publication": {
+        "sdkArchiveRewrites": ["strip-debug", "deterministic-archives"]
+      }
+    },
+    "sha256": "7454d87ed52269241177303df422447d1a23b6e5f438e235b8ca6ade065c9dd4"
+  },
+  "fqbn": "esp32:esp32:esp32c3",
+  "options": {
+    "partition_scheme": "min_spiffs"
+  }
+}

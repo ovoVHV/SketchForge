@@ -1,0 +1,288 @@
+{
+  "fqbn": "esp32:esp32:esp32s2",
+  "name": "ESP32-S2 Dev Module",
+  "arch": "esp32",
+  "flashTotal": 1310720,
+  "ramTotal": 327680,
+  "upload": {
+    "protocol": "esp32",
+    "speed": 921600,
+    "speedByOption": {
+      "upload_speed": {
+        "115200": 115200,
+        "230400": 230400,
+        "256000": 256000,
+        "460800": 460800,
+        "512000": 512000,
+        "921600": 921600
+      }
+    },
+    "flashByOption": {
+      "flash_mode": {
+        "qio": { "mode": "dio", "frequency": "80m" },
+        "dio": { "mode": "dio", "frequency": "80m" }
+      },
+      "flash_freq": {
+        "80m": { "mode": "dio", "frequency": "80m" },
+        "40m": { "mode": "dio", "frequency": "40m" }
+      }
+    },
+    "eraseAllByOption": {
+      "erase_flash": {
+        "disabled": false,
+        "enabled": true
+      }
+    }
+  },
+  "options": [
+    {
+      "id": "psram",
+      "label": "PSRAM",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启" }
+      ]
+    },
+    {
+      "id": "flash_mode",
+      "label": "Flash 模式",
+      "default": "qio",
+      "values": [
+        { "value": "qio", "label": "QIO（默认）" },
+        { "value": "dio", "label": "DIO（兼容性最好）" }
+      ]
+    },
+    {
+      "id": "flash_freq",
+      "label": "Flash 频率",
+      "default": "80m",
+      "values": [
+        { "value": "80m", "label": "80MHz" },
+        { "value": "40m", "label": "40MHz" }
+      ]
+    },
+    {
+      "id": "flash_size",
+      "label": "Flash 容量",
+      "default": "4MB",
+      "values": [
+        { "value": "2MB", "label": "2MB (minimal partition)", "requires": { "partition_scheme": ["minimal"] } },
+        { "value": "4MB", "label": "4MB" },
+        { "value": "8MB", "label": "8MB" },
+        { "value": "16MB", "label": "16MB" }
+      ]
+    },
+    {
+      "id": "partition_scheme",
+      "label": "分区方案",
+      "default": "default",
+      "values": [
+        { "value": "default", "label": "默认 4MB（1.2MB 程序 / 1.5MB SPIFFS）" },
+        { "value": "default_ffat", "label": "默认 4MB（1.2MB 程序 / 1.5MB FATFS）" },
+        { "value": "minimal", "label": "最小 2MB（1.3MB 程序 / 640KB SPIFFS）" },
+        { "value": "no_fs", "label": "无文件系统 4MB（2MB 程序 x2）" },
+        { "value": "no_ota", "label": "无 OTA 4MB（2MB 程序 / 2MB SPIFFS）" },
+        { "value": "noota_3g", "label": "无 OTA 4MB（1MB 程序 / 3MB SPIFFS）" },
+        { "value": "noota_ffat", "label": "无 OTA 4MB（2MB 程序 / 2MB FATFS）" },
+        { "value": "noota_3gffat", "label": "无 OTA 4MB（1MB 程序 / 3MB FATFS）" },
+        { "value": "huge_app", "label": "大程序 4MB（3MB 程序 / 1MB SPIFFS）" },
+        { "value": "min_spiffs", "label": "最小 SPIFFS 4MB（1.9MB 程序 / 128KB SPIFFS）" },
+        { "value": "default_8MB", "label": "8MB（3MB 程序 / 1.5MB SPIFFS）", "requires": { "flash_size": ["8MB", "16MB"] } },
+        { "value": "fatflash", "label": "16MB（2MB 程序 / 12.5MB FATFS）", "requires": { "flash_size": ["16MB"] } },
+        { "value": "app3M_fat9M_16MB", "label": "16MB（3MB 程序 / 9.9MB FATFS）", "requires": { "flash_size": ["16MB"] } },
+        { "value": "rainmaker", "label": "RainMaker 4MB（双 OTA）" },
+        { "value": "rainmaker_4MB", "label": "RainMaker 4MB（无 OTA）" },
+        { "value": "rainmaker_8MB", "label": "RainMaker 8MB（双 OTA）", "requires": { "flash_size": ["8MB", "16MB"] } }
+      ]
+    },
+    {
+      "id": "cpu_freq",
+      "label": "CPU 频率",
+      "default": "240000000L",
+      "values": [
+        { "value": "240000000L", "label": "240MHz（WiFi）" },
+        { "value": "160000000L", "label": "160MHz（WiFi）" },
+        { "value": "80000000L", "label": "80MHz（WiFi）" },
+        { "value": "40000000L", "label": "40MHz" },
+        { "value": "20000000L", "label": "20MHz" },
+        { "value": "10000000L", "label": "10MHz" }
+      ]
+    },
+    {
+      "id": "usb_cdc_on_boot",
+      "label": "USB CDC 启动",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启（内部 USB）" }
+      ]
+    },
+    {
+      "id": "usb_msc_on_boot",
+      "label": "USB MSC 启动",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启" }
+      ]
+    },
+    {
+      "id": "usb_dfu_on_boot",
+      "label": "USB DFU 启动",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启" }
+      ]
+    },
+    {
+      "id": "debug_level",
+      "label": "Core 调试级别",
+      "default": "none",
+      "values": [
+        { "value": "none", "label": "无" },
+        { "value": "error", "label": "Error" },
+        { "value": "warn", "label": "Warn" },
+        { "value": "info", "label": "Info" },
+        { "value": "debug", "label": "Debug" },
+        { "value": "verbose", "label": "Verbose" }
+      ]
+    },
+    {
+      "id": "upload_speed",
+      "label": "烧录速率",
+      "affectsBuild": false,
+      "default": "921600",
+      "values": [
+        { "value": "921600", "label": "921600 bps" },
+        { "value": "512000", "label": "512000 bps" },
+        { "value": "460800", "label": "460800 bps" },
+        { "value": "256000", "label": "256000 bps" },
+        { "value": "230400", "label": "230400 bps" },
+        { "value": "115200", "label": "115200 bps（兼容）" }
+      ]
+    },
+    {
+      "id": "erase_flash",
+      "label": "烧录前整片擦除",
+      "affectsBuild": false,
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启（会清除设备数据）" }
+      ]
+    }
+  ],
+  "pins": [
+    { "id": "0", "label": "GPIO0", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "1", "label": "GPIO1 (A0 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "2", "label": "GPIO2 (A1 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "3", "label": "GPIO3 (A2 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "4", "label": "GPIO4 (A3 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "5", "label": "GPIO5 (A4 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "6", "label": "GPIO6 (A5 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "7", "label": "GPIO7 (A6 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "8", "label": "GPIO8 (SDA / A7 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch", "i2c_sda"] },
+    { "id": "9", "label": "GPIO9 (SCL / A8 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch", "i2c_scl"] },
+    { "id": "10", "label": "GPIO10 (A9 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "11", "label": "GPIO11 (A10 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "12", "label": "GPIO12 (A11 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "13", "label": "GPIO13 (A12 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "14", "label": "GPIO14 (A13 / Touch)", "caps": ["digital", "pwm", "analog_in", "touch"] },
+    { "id": "15", "label": "GPIO15 (A14)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "16", "label": "GPIO16 (A15)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "17", "label": "GPIO17 (DAC1 / A16)", "caps": ["digital", "pwm", "analog_in", "dac"] },
+    { "id": "18", "label": "GPIO18 (RGB LED / DAC2 / A17)", "caps": ["digital", "pwm", "analog_in", "dac"] },
+    { "id": "19", "label": "GPIO19 (USB D-)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "20", "label": "GPIO20 (USB D+)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "34", "label": "GPIO34 (SS)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "35", "label": "GPIO35 (MOSI)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "36", "label": "GPIO36 (SCK)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "37", "label": "GPIO37 (MISO)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "43", "label": "GPIO43 (TX)", "caps": ["digital", "pwm", "uart"] },
+    { "id": "44", "label": "GPIO44 (RX)", "caps": ["digital", "pwm", "uart"] }
+  ],
+  "build": {
+    "mcu": "esp32s2",
+    "tarch": "xtensa",
+    "target": "esp32s2",
+    "fCpu": "240000000L",
+    "variant": "esp32s2",
+    "boardDefine": "ESP32S2_DEV",
+    "defines": [],
+    "bootloaderAddr": "0x1000",
+    "flashMode": "dio",
+    "boot": "qio",
+    "bootFreq": "80m",
+    "flashFreq": "80m",
+    "flashSize": "4MB",
+    "partitions": "default",
+    "optionEffects": {
+      "psram": {
+        "disabled": {},
+        "enabled": { "defines": ["BOARD_HAS_PSRAM"] }
+      },
+      "flash_mode": {
+        "qio": { "flashMode": "dio", "boot": "qio" },
+        "dio": { "flashMode": "dio", "boot": "dio" }
+      },
+      "flash_freq": {
+        "80m": { "flashFreq": "80m", "bootFreq": "80m" },
+        "40m": { "flashFreq": "40m", "bootFreq": "40m" }
+      },
+      "flash_size": {
+        "2MB": { "flashSize": "2MB" },
+        "4MB": { "flashSize": "4MB" },
+        "8MB": { "flashSize": "8MB" },
+        "16MB": { "flashSize": "16MB" }
+      },
+      "partition_scheme": {
+        "default": { "partitions": "default", "maxFlash": 1310720 },
+        "default_ffat": { "partitions": "default_ffat", "maxFlash": 1310720 },
+        "minimal": { "partitions": "minimal", "maxFlash": 1310720 },
+        "no_fs": { "partitions": "no_fs", "maxFlash": 2031616 },
+        "no_ota": { "partitions": "no_ota", "maxFlash": 2097152 },
+        "noota_3g": { "partitions": "noota_3g", "maxFlash": 1048576 },
+        "noota_ffat": { "partitions": "noota_ffat", "maxFlash": 2097152 },
+        "noota_3gffat": { "partitions": "noota_3gffat", "maxFlash": 1048576 },
+        "huge_app": { "partitions": "huge_app", "maxFlash": 3145728 },
+        "min_spiffs": { "partitions": "min_spiffs", "maxFlash": 1966080 },
+        "default_8MB": { "partitions": "default_8MB", "maxFlash": 3342336 },
+        "fatflash": { "partitions": "ffat", "maxFlash": 2097152 },
+        "app3M_fat9M_16MB": { "partitions": "app3M_fat9M_16MB", "maxFlash": 3145728 },
+        "rainmaker": { "partitions": "rainmaker", "maxFlash": 1966080 },
+        "rainmaker_4MB": { "partitions": "rainmaker_4MB_no_ota", "maxFlash": 4038656 },
+        "rainmaker_8MB": { "partitions": "rainmaker_8MB", "maxFlash": 4104192 }
+      },
+      "cpu_freq": {
+        "240000000L": { "fCpu": "240000000L" },
+        "160000000L": { "fCpu": "160000000L" },
+        "80000000L": { "fCpu": "80000000L" },
+        "40000000L": { "fCpu": "40000000L" },
+        "20000000L": { "fCpu": "20000000L" },
+        "10000000L": { "fCpu": "10000000L" }
+      },
+      "usb_cdc_on_boot": {
+        "disabled": { "defines": ["ARDUINO_USB_MODE=0", "ARDUINO_USB_CDC_ON_BOOT=0"] },
+        "enabled": { "defines": ["ARDUINO_USB_MODE=0", "ARDUINO_USB_CDC_ON_BOOT=1"] }
+      },
+      "usb_msc_on_boot": {
+        "disabled": { "defines": ["ARDUINO_USB_MSC_ON_BOOT=0"] },
+        "enabled": { "defines": ["ARDUINO_USB_MSC_ON_BOOT=1"] }
+      },
+      "usb_dfu_on_boot": {
+        "disabled": { "defines": ["ARDUINO_USB_DFU_ON_BOOT=0"] },
+        "enabled": { "defines": ["ARDUINO_USB_DFU_ON_BOOT=1"] }
+      },
+      "debug_level": {
+        "none": { "defines": ["CORE_DEBUG_LEVEL=0"] },
+        "error": { "defines": ["CORE_DEBUG_LEVEL=1"] },
+        "warn": { "defines": ["CORE_DEBUG_LEVEL=2"] },
+        "info": { "defines": ["CORE_DEBUG_LEVEL=3"] },
+        "debug": { "defines": ["CORE_DEBUG_LEVEL=4"] },
+        "verbose": { "defines": ["CORE_DEBUG_LEVEL=5"] }
+      }
+    }
+  }
+}

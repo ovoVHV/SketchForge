@@ -1,0 +1,43 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.local
+
+# 编译产物 / 缓存
+/var/
+/tmp/
+.cache/
+/packages/core/native/
+
+# 工具链本地探测结果（每台机器不同，不入库）
+toolchain.local.json
+
+# 部署密钥、服务器凭据 —— 绝不入库
+.secrets/
+.deploy/
+*.pem
+*.key
+
+# Public source repositories do not carry generated runtimes or local state.
+coverage/
+target/
+*.wasm
+*.pack
+*.bin
+*.gz
+*.a
+*.o
+*.elf
+*.map
+*.tar.gz
+*.zip
+packages/web/gateway-public/
+packages/web/public/toolchains/
+packages/web/public/ck-build-core-wasm/
+packages/web/public/avr/*/assets/
+packages/web/public/avr/*/tools/
+packages/web/public/esp32/*/libraries/
+packages/web/public/esp32/*/libraries-*/
+packages/web/public/esp32/*/libraries-catalog*/
+packages/web/public/esp32/*/platform-manifests/

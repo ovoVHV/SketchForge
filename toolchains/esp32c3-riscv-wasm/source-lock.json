@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "feasibility-only",
+  "compiler": {
+    "repository": "https://github.com/YoWASP/clang.git",
+    "revision": "944dd7c774954180e621cc8e12984023a7f8bcbe",
+    "llvmRevision": "97196c8eeb1d495fa43bb8af2fb26af5ef5b89fb",
+    "wasiLibcRevision": "ac020b86fd44bafe60aa4fa12f407d16e3731329",
+    "backend": "RISCV",
+    "hostTriple": "wasm32-wasip1"
+  },
+  "sdk": {
+    "arduinoEsp32Version": "3.3.7",
+    "board": "esp32:esp32:esp32c3",
+    "target": "riscv32-esp-elf",
+    "march": "rv32imc_zicsr_zifencei"
+  }
+}

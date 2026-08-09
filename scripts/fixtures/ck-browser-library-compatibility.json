@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "library": "lvgl",
+      "version": "9.5.0",
+      "projectFiles": [
+        {
+          "name": "lv_conf.h",
+          "content": "#ifndef LV_CONF_H\n#define LV_CONF_H\n#endif\n"
+        }
+      ],
+      "macros": {
+        "LV_CONF_PATH": "\"lv_conf.h\"",
+        "LV_KCONFIG_IGNORE": true
+      }
+    }
+  ]
+}

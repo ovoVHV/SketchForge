@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "arduino-avr-core",
+  "version": "1.8.6",
+  "revision": "e841aff2419fcd22a3da442d214ee08f0c3b1e6b2155a9cac238fd3c8e7708f3",
+  "artifacts": [
+    {
+      "id": "core-assets",
+      "kind": "asset-pack",
+      "size": 502036,
+      "sha256": "d0d98d7d2be337445b2e5087388bea53ba1c0b5b6359f682da420745685a0d80",
+      "chunks": [
+        {
+          "path": "assets/avr-platform-assets-d0d98d7d2be337445b2e5087388bea53ba1c0b5b6359f682da420745685a0d80.pack",
+          "size": 502036,
+          "sha256": "d0d98d7d2be337445b2e5087388bea53ba1c0b5b6359f682da420745685a0d80"
+        }
+      ]
+    }
+  ]
+}

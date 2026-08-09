@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "runtimeVersion": "v4",
+  "binaryInput": {
+    "package": "@horang-corp/avr-gcc-wasm",
+    "version": "0.2.0",
+    "npmIntegrity": "sha512-N7evT4c8E/9sIKVk0VbC8V+i9UTubHgY5Frxh6LB+OR8BytXmU1cE20poIY0ndj7FwqUPzy1SQfBOAWUDNyU4A==",
+    "upstream": {
+      "repository": "https://github.com/horang-corp/avr-gcc-wasm",
+      "tag": "v0.2.0",
+      "commit": "e3a563f765b041623734991125d5640c7e56053e"
+    }
+  },
+  "commercialRelease": {
+    "ready": false,
+    "status": "integration-only",
+    "requiredArtifacts": [
+      "complete-corresponding-gcc-source",
+      "complete-corresponding-binutils-source",
+      "emscripten-glue-source",
+      "local-patches",
+      "reproducible-build-scripts",
+      "independent-rebuild-provenance"
+    ],
+    "reason": "The pinned binary package is suitable for integration validation, but this repository does not yet contain an independently reproducible complete corresponding source release."
+  }
+}

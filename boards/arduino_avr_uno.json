@@ -1,0 +1,52 @@
+{
+  "fqbn": "arduino:avr:uno",
+  "name": "Arduino UNO",
+  "arch": "avr",
+  "flashTotal": 32256,
+  "ramTotal": 2048,
+  "upload": {
+    "protocol": "stk500v1",
+    "speed": 115200
+  },
+  "options": [
+    {
+      "id": "optimize",
+      "label": "编译优化",
+      "default": "fast",
+      "values": [
+        { "value": "fast", "label": "快速编译（推荐，编译快约 40%）" },
+        { "value": "size", "label": "最小体积（开启 LTO，与 Arduino IDE 一致）" }
+      ]
+    }
+  ],
+  "pins": [
+    { "id": "0",  "label": "D0 (RX)",  "caps": ["digital", "uart"] },
+    { "id": "1",  "label": "D1 (TX)",  "caps": ["digital", "uart"] },
+    { "id": "2",  "label": "D2",       "caps": ["digital"] },
+    { "id": "3",  "label": "D3 (~)",   "caps": ["digital", "pwm"] },
+    { "id": "4",  "label": "D4",       "caps": ["digital"] },
+    { "id": "5",  "label": "D5 (~)",   "caps": ["digital", "pwm"] },
+    { "id": "6",  "label": "D6 (~)",   "caps": ["digital", "pwm"] },
+    { "id": "7",  "label": "D7",       "caps": ["digital"] },
+    { "id": "8",  "label": "D8",       "caps": ["digital"] },
+    { "id": "9",  "label": "D9 (~)",   "caps": ["digital", "pwm"] },
+    { "id": "10", "label": "D10 (~SS)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "11", "label": "D11 (~MOSI)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "12", "label": "D12 (MISO)", "caps": ["digital", "spi"] },
+    { "id": "13", "label": "D13 (SCK/LED)", "caps": ["digital", "spi"] },
+    { "id": "A0", "label": "A0", "caps": ["digital", "analog_in"] },
+    { "id": "A1", "label": "A1", "caps": ["digital", "analog_in"] },
+    { "id": "A2", "label": "A2", "caps": ["digital", "analog_in"] },
+    { "id": "A3", "label": "A3", "caps": ["digital", "analog_in"] },
+    { "id": "A4", "label": "A4 (SDA)", "caps": ["digital", "analog_in", "i2c_sda"] },
+    { "id": "A5", "label": "A5 (SCL)", "caps": ["digital", "analog_in", "i2c_scl"] },
+    { "id": "LED_BUILTIN", "label": "板载 LED (D13)", "caps": ["digital"] }
+  ],
+  "build": {
+    "mcu": "atmega328p",
+    "fCpu": "16000000L",
+    "variant": "standard",
+    "defines": ["ARDUINO_AVR_UNO", "ARDUINO_ARCH_AVR"],
+    "lto": false
+  }
+}

@@ -1,0 +1,118 @@
+# 生产编译 worker 镜像。
+#
+# 两个实测得出的关键决定：
+#
+# 1. 沙箱用 bubblewrap 而不是 nsjail。
+#    nsjail 不在 Debian 稳定版仓库（bookworm 无该包），自建要引入
+#    protobuf/libnl/bison/flex 一堆依赖和长期维护负担。
+#    bubblewrap 在 main 仓库，是 Flatpak 的沙箱底座。
+#
+# 2. 运行时必须放宽 seccomp，否则 bwrap 创建不了命名空间：
+#      docker run --security-opt seccomp=unconfined ...
+#    实测：默认失败；--cap-add SYS_ADMIN 仍失败（pivot_root 被拦）；
+#          seccomp=unconfined 成功，且**不需要** SYS_ADMIN / privileged。
+#    含义：worker 容器与宿主之间的边界因此变弱，宿主隔离要靠专用 VM
+#    或 gVisor/Firecracker 承担；bwrap 只负责隔离「用户代码 ↔ worker 容器」。
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --ignore-scripts
+COPY tsconfig.json tsconfig.base.json ./
+COPY packages/core ./packages/core
+COPY packages/server ./packages/server
+RUN npx tsc -b --force packages/core packages/server
+
+FROM node:24-bookworm-slim AS production-dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --omit=dev --ignore-scripts
+
+FROM rust:1.85-bookworm AS ck-build-core-native
+WORKDIR /src/crates/ck-build-core
+COPY crates/ck-build-core/Cargo.toml crates/ck-build-core/Cargo.lock ./
+COPY crates/ck-build-core/src ./src
+RUN cargo build --locked --release --bin ck-build-core
+
+# ---------------------------------------------------------------------------
+# 工具链层：Arduino 官方 avr-gcc + 官方 Arduino AVR core 源码
+# ---------------------------------------------------------------------------
+FROM debian:bookworm-slim AS toolchain
+ARG ARDUINO_CORE_VERSION=1.8.6
+ARG ARDUINO_CORE_SHA256=49241fd5e504482b94954b5843c7d69ce38ebc1ab47ad3b677e8bb77e0cb8fe6
+ARG AVR_GCC_VERSION=7.3.0-atmel3.6.1-arduino7
+ARG AVR_GCC_SHA256=bd8c37f6952a2130ac9ee32c53f6a660feb79bee8353c8e289eb60fdcefed91e
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bzip2 curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /opt/avr /opt/avr-gcc \
+    && curl -fsSL -o /tmp/arduino-core-avr.tar.gz \
+       "https://github.com/arduino/ArduinoCore-avr/archive/refs/tags/${ARDUINO_CORE_VERSION}.tar.gz" \
+    && echo "${ARDUINO_CORE_SHA256}  /tmp/arduino-core-avr.tar.gz" | sha256sum -c - \
+    && curl -fsSL -o /tmp/avr-gcc.tar.bz2 \
+       "https://downloads.arduino.cc/tools/avr-gcc-${AVR_GCC_VERSION}-x86_64-pc-linux-gnu.tar.bz2" \
+    && echo "${AVR_GCC_SHA256}  /tmp/avr-gcc.tar.bz2" | sha256sum -c - \
+    && tar xzf /tmp/arduino-core-avr.tar.gz -C /tmp \
+    && tar xjf /tmp/avr-gcc.tar.bz2 -C /opt/avr-gcc --strip-components=1 \
+    && cp -r "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/cores" /opt/avr/ \
+    && cp -r "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/variants" /opt/avr/ \
+    && cp -r "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/libraries" /opt/avr/ \
+    && rm -rf /tmp/ArduinoCore-avr-* /tmp/arduino-core-avr.tar.gz /tmp/avr-gcc.tar.bz2
+
+# ---------------------------------------------------------------------------
+FROM node:24-bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bubblewrap util-linux \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 arduinofast \
+    && useradd --uid 10001 --gid arduinofast --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast
+
+COPY --from=toolchain /opt/avr /opt/avr
+COPY --from=toolchain /opt/avr-gcc /opt/avr-gcc
+
+WORKDIR /app
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/packages/core/dist ./packages/core/dist
+COPY --from=build /app/packages/core/wasm ./packages/core/wasm
+COPY --from=ck-build-core-native /src/crates/ck-build-core/target/release/ck-build-core ./packages/core/native/ck-build-core
+COPY --from=build /app/packages/core/package.json ./packages/core/
+COPY --from=build /app/packages/server/dist ./packages/server/dist
+COPY --from=build /app/packages/server/package.json ./packages/server/
+COPY boards ./boards
+COPY packages/web/public ./packages/web/public
+COPY package.json ./
+
+ENV AF_AVR_BIN=/opt/avr-gcc/bin \
+    AF_AVR_ROOT=/opt/avr-gcc \
+    AF_AVR_CORE=/opt/avr/cores/arduino \
+    AF_AVR_VARIANTS=/opt/avr/variants \
+    AF_LIBRARIES_DIRS=/opt/avr/libraries \
+    AF_CACHE_DIR=/var/afcache \
+    AF_WORK_DIR=/var/afwork \
+    AF_SANDBOX=bubblewrap \
+    AF_CK_BUILD_CORE_BACKEND=native \
+    AF_CK_BUILD_CORE_NATIVE=/app/packages/core/native/ck-build-core \
+    NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=3000
+
+RUN install -d -o arduinofast -g arduinofast -m 0750 /var/afcache /var/afwork
+VOLUME ["/var/afcache"]
+EXPOSE 3000
+
+# 编排层应把根文件系统设为只读，并仅为 /var/afcache、/var/afwork、/tmp
+# 提供受限的可写挂载。固定 UID/GID 便于宿主预先配置缓存目录权限。
+USER 10001:10001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+
+# NODE_ENV=production 时服务会检查沙箱隔离等级，
+# 非 namespace 级直接拒绝启动 —— 防止开发配置误上线。
+CMD ["node", "packages/server/dist/index.js"]

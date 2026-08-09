@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "avr": {
+    "version": "v4",
+    "sourceFiles": [
+      "index.js",
+      "worker.js",
+      "firmware-builder.js",
+      "build-ir.js",
+      "action-protocol.js",
+      "asset-pack.js",
+      "TOOLCHAIN_SOURCE.md"
+    ],
+    "toolchainFiles": [
+      "toolchain-pack.js",
+      "verified-emscripten.js"
+    ],
+    "toolFiles": [
+      "cc1plus.mjs",
+      "cc1plus.wasm",
+      "avr-as.mjs",
+      "avr-as.wasm",
+      "avr-ld.mjs",
+      "avr-ld.wasm",
+      "avr-objcopy.mjs",
+      "avr-objcopy.wasm"
+    ]
+  },
+  "esp32Shared": {
+    "version": "v3",
+    "files": [
+      "preprocess.js",
+      "toolchain-pack.js"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+# Name, Type, SubType, Offset, Size, Flags
+small,data,nvs,,20K,encrypted:readonly
+firmware,app,ota_0,,1M,
+fs,data,spiffs,,2M,encrypted

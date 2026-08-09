@@ -1,0 +1,242 @@
+{
+  "fqbn": "esp32:esp32:esp32h2",
+  "name": "ESP32-H2 Dev Module",
+  "arch": "esp32",
+  "flashTotal": 1310720,
+  "ramTotal": 327680,
+  "upload": {
+    "protocol": "esp32",
+    "speed": 921600,
+    "speedByOption": {
+      "upload_speed": {
+        "115200": 115200,
+        "230400": 230400,
+        "256000": 256000,
+        "460800": 460800,
+        "512000": 512000,
+        "921600": 921600
+      }
+    },
+    "flashByOption": {
+      "flash_mode": {
+        "qio": { "mode": "dio", "frequency": "48m" },
+        "dio": { "mode": "dio", "frequency": "48m" }
+      },
+      "flash_freq": {
+        "64m": { "mode": "dio", "frequency": "48m" },
+        "16m": { "mode": "dio", "frequency": "12m" }
+      }
+    },
+    "eraseAllByOption": {
+      "erase_flash": {
+        "disabled": false,
+        "enabled": true
+      }
+    }
+  },
+  "_note_image_frequency": "ESP32-H2 官方定义的硬件 Flash 时钟为 64/16MHz，但由 esptool 写入镜像头的频率必须分别为 48/12MHz。这里两个值都按官方 boards.txt 映射，不能把 64m 直接交给 elf2image。",
+  "options": [
+    {
+      "id": "flash_mode",
+      "label": "Flash 模式",
+      "default": "qio",
+      "values": [
+        { "value": "qio", "label": "QIO（默认）" },
+        { "value": "dio", "label": "DIO（兼容性最好）" }
+      ]
+    },
+    {
+      "id": "flash_freq",
+      "label": "Flash 硬件频率",
+      "default": "64m",
+      "values": [
+        { "value": "64m", "label": "64MHz" },
+        { "value": "16m", "label": "16MHz" }
+      ]
+    },
+    {
+      "id": "flash_size",
+      "label": "Flash 容量",
+      "default": "4MB",
+      "values": [
+        { "value": "2MB", "label": "2MB (minimal / Zigbee partition)", "requires": { "partition_scheme": ["minimal", "zigbee_2MB", "zigbee_zczr_2MB"] } },
+        { "value": "4MB", "label": "4MB" },
+        { "value": "8MB", "label": "8MB" },
+        { "value": "16MB", "label": "16MB" }
+      ]
+    },
+    {
+      "id": "partition_scheme",
+      "label": "分区方案",
+      "default": "default",
+      "values": [
+        { "value": "default", "label": "默认 4MB（1.2MB 程序 / 1.5MB SPIFFS）" },
+        { "value": "default_ffat", "label": "默认 4MB（1.2MB 程序 / 1.5MB FATFS）" },
+        { "value": "minimal", "label": "最小 2MB（1.3MB 程序 / 640KB SPIFFS）" },
+        { "value": "no_fs", "label": "无文件系统 4MB（2MB 程序 x2）" },
+        { "value": "no_ota", "label": "无 OTA 4MB（2MB 程序 / 2MB SPIFFS）" },
+        { "value": "noota_3g", "label": "无 OTA 4MB（1MB 程序 / 3MB SPIFFS）" },
+        { "value": "noota_ffat", "label": "无 OTA 4MB（2MB 程序 / 2MB FATFS）" },
+        { "value": "noota_3gffat", "label": "无 OTA 4MB（1MB 程序 / 3MB FATFS）" },
+        { "value": "huge_app", "label": "大程序 4MB（3MB 程序 / 1MB SPIFFS）" },
+        { "value": "min_spiffs", "label": "最小 SPIFFS 4MB（1.9MB 程序 / 128KB SPIFFS）" },
+        { "value": "default_8MB", "label": "8MB（3MB 程序 / 1.5MB SPIFFS）", "requires": { "flash_size": ["8MB", "16MB"] } },
+        { "value": "fatflash", "label": "16MB（2MB 程序 / 12.5MB FATFS）", "requires": { "flash_size": ["16MB"] } },
+        { "value": "app3M_fat9M_16MB", "label": "16MB（3MB 程序 / 9.9MB FATFS）", "requires": { "flash_size": ["16MB"] } },
+        { "value": "zigbee_2MB", "label": "Zigbee 2MB", "requires": { "flash_size": ["2MB"] } },
+        { "value": "zigbee", "label": "Zigbee 4MB", "requires": { "flash_size": ["4MB", "8MB", "16MB"] } },
+        { "value": "zigbee_8MB", "label": "Zigbee 8MB", "requires": { "flash_size": ["8MB", "16MB"] } },
+        { "value": "zigbee_zczr_2MB", "label": "Zigbee ZCZR 2MB", "requires": { "flash_size": ["2MB"] } },
+        { "value": "zigbee_zczr", "label": "Zigbee ZCZR 4MB", "requires": { "flash_size": ["4MB", "8MB", "16MB"] } },
+        { "value": "zigbee_zczr_8MB", "label": "Zigbee ZCZR 8MB", "requires": { "flash_size": ["8MB", "16MB"] } }
+      ]
+    },
+    {
+      "id": "usb_cdc_on_boot",
+      "label": "USB CDC 启动",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭（UART0）" },
+        { "value": "enabled", "label": "开启（USB Serial/JTAG）" }
+      ]
+    },
+    {
+      "id": "zigbee_mode",
+      "label": "Zigbee 模式",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "ed", "label": "终端设备", "requires": { "partition_scheme": ["zigbee_2MB", "zigbee", "zigbee_8MB"] } },
+        { "value": "zczr", "label": "协调器 / 路由器", "requires": { "partition_scheme": ["zigbee_zczr_2MB", "zigbee_zczr", "zigbee_zczr_8MB"] } },
+        { "value": "ed_debug", "label": "终端设备（调试）", "requires": { "partition_scheme": ["zigbee_2MB", "zigbee", "zigbee_8MB"] } },
+        { "value": "zczr_debug", "label": "协调器 / 路由器（调试）", "requires": { "partition_scheme": ["zigbee_zczr_2MB", "zigbee_zczr", "zigbee_zczr_8MB"] } }
+      ]
+    },
+    {
+      "id": "debug_level",
+      "label": "Core 调试级别",
+      "default": "none",
+      "values": [
+        { "value": "none", "label": "无" },
+        { "value": "error", "label": "Error" },
+        { "value": "warn", "label": "Warn" },
+        { "value": "info", "label": "Info" },
+        { "value": "debug", "label": "Debug" },
+        { "value": "verbose", "label": "Verbose" }
+      ]
+    },
+    {
+      "id": "upload_speed",
+      "label": "烧录速率",
+      "affectsBuild": false,
+      "default": "921600",
+      "values": [
+        { "value": "921600", "label": "921600 bps" },
+        { "value": "512000", "label": "512000 bps" },
+        { "value": "460800", "label": "460800 bps" },
+        { "value": "256000", "label": "256000 bps" },
+        { "value": "230400", "label": "230400 bps" },
+        { "value": "115200", "label": "115200 bps（兼容）" }
+      ]
+    },
+    {
+      "id": "erase_flash",
+      "label": "烧录前整片擦除",
+      "affectsBuild": false,
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启（会清除设备数据）" }
+      ]
+    }
+  ],
+  "pins": [
+    { "id": "0", "label": "GPIO0 (SS)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "1", "label": "GPIO1 (A0)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "2", "label": "GPIO2 (A1)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "3", "label": "GPIO3 (A2)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "4", "label": "GPIO4 (A3)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "5", "label": "GPIO5 (A4)", "caps": ["digital", "pwm", "analog_in"] },
+    { "id": "8", "label": "GPIO8 (RGB LED)", "caps": ["digital", "pwm"] },
+    { "id": "10", "label": "GPIO10 (SCK)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "11", "label": "GPIO11 (MISO)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "12", "label": "GPIO12 (SDA)", "caps": ["digital", "pwm", "i2c_sda"] },
+    { "id": "22", "label": "GPIO22 (SCL)", "caps": ["digital", "pwm", "i2c_scl"] },
+    { "id": "23", "label": "GPIO23 (RX)", "caps": ["digital", "pwm", "uart"] },
+    { "id": "24", "label": "GPIO24 (TX)", "caps": ["digital", "pwm", "uart"] },
+    { "id": "25", "label": "GPIO25 (MOSI)", "caps": ["digital", "pwm", "spi"] }
+  ],
+  "build": {
+    "mcu": "esp32h2",
+    "tarch": "riscv32",
+    "target": "esp",
+    "fCpu": "96000000L",
+    "variant": "esp32h2",
+    "boardDefine": "ESP32H2_DEV",
+    "defines": [],
+    "bootloaderAddr": "0x0",
+    "flashMode": "qio",
+    "boot": "qio",
+    "bootFreq": "64m",
+    "flashFreq": "64m",
+    "imageFreq": "48m",
+    "flashSize": "4MB",
+    "partitions": "default",
+    "optionEffects": {
+      "flash_mode": {
+        "qio": { "flashMode": "dio", "boot": "qio" },
+        "dio": { "flashMode": "dio", "boot": "dio" }
+      },
+      "flash_freq": {
+        "64m": { "flashFreq": "64m", "imageFreq": "48m", "bootFreq": "64m" },
+        "16m": { "flashFreq": "16m", "imageFreq": "12m", "bootFreq": "16m" }
+      },
+      "flash_size": {
+        "2MB": { "flashSize": "2MB" },
+        "4MB": { "flashSize": "4MB" },
+        "8MB": { "flashSize": "8MB" },
+        "16MB": { "flashSize": "16MB" }
+      },
+      "partition_scheme": {
+        "default": { "partitions": "default", "maxFlash": 1310720 },
+        "default_ffat": { "partitions": "default_ffat", "maxFlash": 1310720 },
+        "minimal": { "partitions": "minimal", "maxFlash": 1310720 },
+        "no_fs": { "partitions": "no_fs", "maxFlash": 2031616 },
+        "no_ota": { "partitions": "no_ota", "maxFlash": 2097152 },
+        "noota_3g": { "partitions": "noota_3g", "maxFlash": 1048576 },
+        "noota_ffat": { "partitions": "noota_ffat", "maxFlash": 2097152 },
+        "noota_3gffat": { "partitions": "noota_3gffat", "maxFlash": 1048576 },
+        "huge_app": { "partitions": "huge_app", "maxFlash": 3145728 },
+        "min_spiffs": { "partitions": "min_spiffs", "maxFlash": 1966080 },
+        "default_8MB": { "partitions": "default_8MB", "maxFlash": 3342336 },
+        "fatflash": { "partitions": "ffat", "maxFlash": 2097152 },
+        "app3M_fat9M_16MB": { "partitions": "app3M_fat9M_16MB", "maxFlash": 3145728 },
+        "zigbee_2MB": { "partitions": "zigbee_2MB", "maxFlash": 1310720 },
+        "zigbee": { "partitions": "zigbee", "maxFlash": 1310720 },
+        "zigbee_8MB": { "partitions": "zigbee_8MB", "maxFlash": 3407872 },
+        "zigbee_zczr_2MB": { "partitions": "zigbee_zczr_2MB", "maxFlash": 1310720 },
+        "zigbee_zczr": { "partitions": "zigbee_zczr", "maxFlash": 1310720 },
+        "zigbee_zczr_8MB": { "partitions": "zigbee_zczr_8MB", "maxFlash": 3407872 }
+      },
+      "usb_cdc_on_boot": {
+        "disabled": { "defines": ["ARDUINO_USB_MODE=1", "ARDUINO_USB_CDC_ON_BOOT=0"] },
+        "enabled": { "defines": ["ARDUINO_USB_MODE=1", "ARDUINO_USB_CDC_ON_BOOT=1"] }
+      },
+      "zigbee_mode": {
+        "disabled": {},
+        "ed": { "defines": ["ZIGBEE_MODE_ED"], "linkerFlags": ["-lesp_zb_api.ed", "-lzboss_stack.ed", "-lzboss_port.native"] },
+        "zczr": { "defines": ["ZIGBEE_MODE_ZCZR"], "linkerFlags": ["-lesp_zb_api.zczr", "-lzboss_stack.zczr", "-lzboss_port.native"] },
+        "ed_debug": { "defines": ["ZIGBEE_MODE_ED"], "linkerFlags": ["-lesp_zb_api.ed.debug", "-lzboss_stack.ed.debug", "-lzboss_port.native.debug"] },
+        "zczr_debug": { "defines": ["ZIGBEE_MODE_ZCZR"], "linkerFlags": ["-lesp_zb_api.zczr.debug", "-lzboss_stack.zczr.debug", "-lzboss_port.native.debug"] }
+      },
+      "debug_level": {
+        "none": { "defines": ["CORE_DEBUG_LEVEL=0"] },
+        "error": { "defines": ["CORE_DEBUG_LEVEL=1"] },
+        "warn": { "defines": ["CORE_DEBUG_LEVEL=2"] },
+        "info": { "defines": ["CORE_DEBUG_LEVEL=3"] },
+        "debug": { "defines": ["CORE_DEBUG_LEVEL=4"] },
+        "verbose": { "defines": ["CORE_DEBUG_LEVEL=5"] }
+      }
+    }
+  }
+}

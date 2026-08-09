@@ -1,0 +1,46 @@
+diff --git a/build.sh b/build.sh
+index d471952..10b9769 100755
+--- a/build.sh
++++ b/build.sh
+@@ -59,7 +59,7 @@ if ! [ -f llvm-tblgen-build/bin/llvm-tblgen -a -f llvm-tblgen-build/bin/clang-t
+     -DLLVM_INCLUDE_TESTS=OFF \
+     -DLLVM_INCLUDE_BENCHMARKS=OFF \
+     -DLLVM_INCLUDE_DOCS=OFF \
+-    -DLLVM_TARGETS_TO_BUILD=WebAssembly \
++    -DLLVM_TARGETS_TO_BUILD=RISCV \
+     -DLLVM_DEFAULT_TARGET_TRIPLE=${WASI_TARGET} \
+     -DLLVM_ENABLE_PROJECTS="clang" \
+     -DCLANG_BUILD_EXAMPLES=OFF \
+@@ -95,7 +95,7 @@ cmake -B llvm-build -S llvm-src/llvm \
+   -DLLVM_INCLUDE_TESTS=OFF \
+   -DLLVM_INCLUDE_BENCHMARKS=OFF \
+   -DLLVM_INCLUDE_DOCS=OFF \
+-  -DLLVM_TARGETS_TO_BUILD=WebAssembly \
++  -DLLVM_TARGETS_TO_BUILD=RISCV \
+   -DLLVM_DEFAULT_TARGET_TRIPLE=${WASI_TARGET} \
+   -DLLVM_TOOL_BUGPOINT_BUILD=OFF \
+   -DLLVM_TOOL_BUGPOINT_PASSES_BUILD=OFF \
+diff --git a/npmjs/package-in.json b/npmjs/package-in.json
+index 0e62da3..a67e435 100644
+--- a/npmjs/package-in.json
++++ b/npmjs/package-in.json
+@@ -1,7 +1,7 @@
+ {
+-    "name": "@yowasp/clang",
++    "name": "@arduinofast/esp32c3-clang-wasm",
+     "version": "__VERSION__",
+-    "description": "LLVM/Clang/LLD toolchain targeting WebAssembly",
++    "description": "Experimental WASI-hosted LLVM/Clang/LLD toolchain targeting ESP32-C3 RISC-V",
+     "author": "Catherine <whitequark@whitequark.org>",
+     "license": "ISC",
+     "homepage": "https://yowasp.org/",
+@@ -14,6 +14,9 @@
+     },
+     "type": "module",
+     "files": [
++        "LICENSE.txt",
++        "THIRD_PARTY_NOTICES.md",
++        "licenses/**",
+         "lib/api.d.ts",
+         "gen/bundle.js",
+         "gen/*-resources.tar",

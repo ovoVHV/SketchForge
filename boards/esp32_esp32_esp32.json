@@ -1,0 +1,313 @@
+{
+  "fqbn": "esp32:esp32:esp32",
+  "name": "ESP32 Dev Module",
+  "arch": "esp32",
+  "flashTotal": 1310720,
+  "ramTotal": 327680,
+  "upload": {
+    "protocol": "esp32",
+    "speed": 921600,
+    "speedByOption": {
+      "upload_speed": {
+        "115200": 115200,
+        "230400": 230400,
+        "256000": 256000,
+        "460800": 460800,
+        "512000": 512000,
+        "921600": 921600
+      }
+    },
+    "flashByOption": {
+      "flash_mode": {
+        "dio": { "mode": "dio", "frequency": "40m" },
+        "qio": { "mode": "dio", "frequency": "40m" }
+      },
+      "flash_freq": {
+        "40m": { "mode": "dio", "frequency": "40m" },
+        "80m": { "mode": "dio", "frequency": "80m" }
+      }
+    },
+    "eraseAllByOption": {
+      "erase_flash": {
+        "disabled": false,
+        "enabled": true
+      }
+    }
+  },
+  "options": [
+    {
+      "id": "psram",
+      "label": "PSRAM",
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启（ESP32-WROVER 等）" }
+      ]
+    },
+    {
+      "id": "flash_mode",
+      "label": "Flash 模式",
+      "default": "dio",
+      "values": [
+        { "value": "dio", "label": "DIO（默认，兼容性最好）" },
+        { "value": "qio", "label": "QIO" }
+      ]
+    },
+    {
+      "id": "flash_freq",
+      "label": "Flash 频率",
+      "default": "40m",
+      "values": [
+        { "value": "40m", "label": "40MHz（默认）" },
+        { "value": "80m", "label": "80MHz" }
+      ]
+    },
+    {
+      "id": "flash_size",
+      "label": "Flash 容量",
+      "default": "4MB",
+      "values": [
+        { "value": "2MB", "label": "2MB (minimal partition)", "requires": { "partition_scheme": ["minimal"] } },
+        { "value": "4MB", "label": "4MB" },
+        { "value": "8MB", "label": "8MB" },
+        { "value": "16MB", "label": "16MB" }
+      ]
+    },
+    {
+      "id": "partition_scheme",
+      "label": "分区方案",
+      "default": "default",
+      "values": [
+        { "value": "default", "label": "默认 4MB（1.2MB 程序 / 1.5MB SPIFFS）" },
+        { "value": "default_ffat", "label": "默认 4MB（1.2MB 程序 / 1.5MB FATFS）" },
+        { "value": "minimal", "label": "最小 2MB（1.3MB 程序 / 640KB SPIFFS）" },
+        { "value": "no_fs", "label": "无文件系统 4MB（2MB 程序 x2）" },
+        { "value": "no_ota", "label": "无 OTA 4MB（2MB 程序 / 2MB SPIFFS）" },
+        { "value": "noota_3g", "label": "无 OTA 4MB（1MB 程序 / 3MB SPIFFS）" },
+        { "value": "noota_ffat", "label": "无 OTA 4MB（2MB 程序 / 2MB FATFS）" },
+        { "value": "noota_3gffat", "label": "无 OTA 4MB（1MB 程序 / 3MB FATFS）" },
+        { "value": "huge_app", "label": "大程序 4MB（3MB 程序 / 1MB SPIFFS）" },
+        { "value": "min_spiffs", "label": "最小 SPIFFS 4MB（1.9MB 程序 / 128KB SPIFFS）" },
+        {
+          "value": "default_8MB",
+          "label": "8MB（3MB 程序 / 1.5MB SPIFFS）",
+          "requires": { "flash_size": ["8MB", "16MB"] }
+        },
+        {
+          "value": "fatflash",
+          "label": "16MB（2MB 程序 / 12.5MB FATFS）",
+          "requires": { "flash_size": ["16MB"] }
+        },
+        {
+          "value": "app3M_fat9M_16MB",
+          "label": "16MB（3MB 程序 / 9.9MB FATFS）",
+          "requires": { "flash_size": ["16MB"] }
+        },
+        {
+          "value": "rainmaker",
+          "label": "RainMaker 4MB (dual OTA)"
+        },
+        {
+          "value": "rainmaker_4MB",
+          "label": "RainMaker 4MB (no OTA)"
+        },
+        {
+          "value": "rainmaker_8MB",
+          "label": "RainMaker 8MB (dual OTA)",
+          "requires": { "flash_size": ["8MB", "16MB"] }
+        },
+        {
+          "value": "storage_4MB",
+          "label": "Storage APP 4MB (2MB APP / 1MB NVS / 896KB SPIFFS)",
+          "requires": { "flash_size": ["4MB"] }
+        }
+      ]
+    },
+    {
+      "id": "cpu_freq",
+      "label": "CPU 频率",
+      "default": "240000000L",
+      "values": [
+        { "value": "240000000L", "label": "240MHz（WiFi/BT）" },
+        { "value": "160000000L", "label": "160MHz（WiFi/BT）" },
+        { "value": "80000000L", "label": "80MHz（WiFi/BT）" },
+        { "value": "40000000L", "label": "40MHz（40MHz XTAL）" },
+        { "value": "26000000L", "label": "26MHz（26MHz XTAL）" },
+        { "value": "20000000L", "label": "20MHz（40MHz XTAL）" },
+        { "value": "13000000L", "label": "13MHz（26MHz XTAL）" },
+        { "value": "10000000L", "label": "10MHz（40MHz XTAL）" }
+      ]
+    },
+    {
+      "id": "loop_core",
+      "label": "Arduino 运行核心",
+      "default": "1",
+      "values": [
+        { "value": "1", "label": "Core 1（默认）" },
+        { "value": "0", "label": "Core 0" }
+      ]
+    },
+    {
+      "id": "event_core",
+      "label": "Arduino 事件核心",
+      "default": "1",
+      "values": [
+        { "value": "1", "label": "Core 1（默认）" },
+        { "value": "0", "label": "Core 0" }
+      ]
+    },
+    {
+      "id": "debug_level",
+      "label": "Core 调试级别",
+      "default": "none",
+      "values": [
+        { "value": "none", "label": "无" },
+        { "value": "error", "label": "Error" },
+        { "value": "warn", "label": "Warn" },
+        { "value": "info", "label": "Info" },
+        { "value": "debug", "label": "Debug" },
+        { "value": "verbose", "label": "Verbose" }
+      ]
+    },
+    {
+      "id": "upload_speed",
+      "label": "烧录速率",
+      "affectsBuild": false,
+      "default": "921600",
+      "values": [
+        { "value": "921600", "label": "921600 bps" },
+        { "value": "512000", "label": "512000 bps" },
+        { "value": "460800", "label": "460800 bps" },
+        { "value": "256000", "label": "256000 bps" },
+        { "value": "230400", "label": "230400 bps" },
+        { "value": "115200", "label": "115200 bps（兼容）" }
+      ]
+    },
+    {
+      "id": "erase_flash",
+      "label": "烧录前整片擦除",
+      "affectsBuild": false,
+      "default": "disabled",
+      "values": [
+        { "value": "disabled", "label": "关闭" },
+        { "value": "enabled", "label": "开启" }
+      ]
+    }
+  ],
+  "pins": [
+    { "id": "0",  "label": "GPIO0（启动模式脚）",  "caps": ["digital", "touch", "analog_in"] },
+    { "id": "1",  "label": "GPIO1 (TX0)",         "caps": ["digital", "uart"] },
+    { "id": "2",  "label": "GPIO2（板载 LED）",    "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "3",  "label": "GPIO3 (RX0)",         "caps": ["digital", "uart"] },
+    { "id": "4",  "label": "GPIO4",  "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "5",  "label": "GPIO5 (SS)",  "caps": ["digital", "pwm", "spi"] },
+    { "id": "12", "label": "GPIO12", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "13", "label": "GPIO13", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "14", "label": "GPIO14", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "15", "label": "GPIO15", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "16", "label": "GPIO16", "caps": ["digital", "pwm"] },
+    { "id": "17", "label": "GPIO17", "caps": ["digital", "pwm"] },
+    { "id": "18", "label": "GPIO18 (SCK)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "19", "label": "GPIO19 (MISO)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "21", "label": "GPIO21 (SDA)", "caps": ["digital", "pwm", "i2c_sda"] },
+    { "id": "22", "label": "GPIO22 (SCL)", "caps": ["digital", "pwm", "i2c_scl"] },
+    { "id": "23", "label": "GPIO23 (MOSI)", "caps": ["digital", "pwm", "spi"] },
+    { "id": "25", "label": "GPIO25 (DAC1)", "caps": ["digital", "pwm", "analog_in", "dac"] },
+    { "id": "26", "label": "GPIO26 (DAC2)", "caps": ["digital", "pwm", "analog_in", "dac"] },
+    { "id": "27", "label": "GPIO27", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "32", "label": "GPIO32", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "33", "label": "GPIO33", "caps": ["digital", "pwm", "touch", "analog_in"] },
+    { "id": "34", "label": "GPIO34（仅输入）", "caps": ["analog_in"] },
+    { "id": "35", "label": "GPIO35（仅输入）", "caps": ["analog_in"] },
+    { "id": "36", "label": "GPIO36 / VP（仅输入）", "caps": ["analog_in"] },
+    { "id": "39", "label": "GPIO39 / VN（仅输入）", "caps": ["analog_in"] }
+  ],
+  "_note_pins": "通用 ESP32 Dev Module 的 variant 不定义 LED_BUILTIN（这块板子没有标准板载 LED），因此这里刻意不列出该引脚 —— 列了会让图形化平台生成编译不过的代码。多数第三方开发板的 LED 在 GPIO2，但那不是保证。",
+  "build": {
+    "mcu": "esp32",
+    "tarch": "xtensa",
+    "target": "esp32",
+    "fCpu": "240000000L",
+    "variant": "esp32",
+    "boardDefine": "ESP32_DEV",
+    "defines": [],
+    "bootloaderAddr": "0x1000",
+    "flashMode": "dio",
+    "boot": "dio",
+    "bootFreq": "40m",
+    "flashFreq": "40m",
+    "flashSize": "4MB",
+    "partitions": "default",
+    "optionEffects": {
+      "psram": {
+        "disabled": {},
+        "enabled": {
+          "defines": ["BOARD_HAS_PSRAM"],
+          "compilerFlags": [
+            "-mfix-esp32-psram-cache-issue",
+            "-mfix-esp32-psram-cache-strategy=memw"
+          ]
+        }
+      },
+      "flash_mode": {
+        "dio": { "flashMode": "dio", "boot": "dio" },
+        "qio": { "flashMode": "dio", "boot": "qio" }
+      },
+      "flash_freq": {
+        "40m": { "flashFreq": "40m", "bootFreq": "40m" },
+        "80m": { "flashFreq": "80m", "bootFreq": "80m" }
+      },
+      "flash_size": {
+        "2MB": { "flashSize": "2MB" },
+        "4MB": { "flashSize": "4MB" },
+        "8MB": { "flashSize": "8MB" },
+        "16MB": { "flashSize": "16MB" }
+      },
+      "partition_scheme": {
+        "default": { "partitions": "default", "maxFlash": 1310720 },
+        "default_ffat": { "partitions": "default_ffat", "maxFlash": 1310720 },
+        "minimal": { "partitions": "minimal", "maxFlash": 1310720 },
+        "no_fs": { "partitions": "no_fs", "maxFlash": 2031616 },
+        "no_ota": { "partitions": "no_ota", "maxFlash": 2097152 },
+        "noota_3g": { "partitions": "noota_3g", "maxFlash": 1048576 },
+        "noota_ffat": { "partitions": "noota_ffat", "maxFlash": 2097152 },
+        "noota_3gffat": { "partitions": "noota_3gffat", "maxFlash": 1048576 },
+        "huge_app": { "partitions": "huge_app", "maxFlash": 3145728 },
+        "min_spiffs": { "partitions": "min_spiffs", "maxFlash": 1966080 },
+        "default_8MB": { "partitions": "default_8MB", "maxFlash": 3342336 },
+        "fatflash": { "partitions": "ffat", "maxFlash": 2097152 },
+        "app3M_fat9M_16MB": { "partitions": "app3M_fat9M_16MB", "maxFlash": 3145728 },
+        "rainmaker": { "partitions": "rainmaker", "maxFlash": 1966080 },
+        "rainmaker_4MB": { "partitions": "rainmaker_4MB_no_ota", "maxFlash": 4038656 },
+        "rainmaker_8MB": { "partitions": "rainmaker_8MB", "maxFlash": 4104192 },
+        "storage_4MB": { "partitions": "storage_4MB_noota", "maxFlash": 2097152 }
+      },
+      "cpu_freq": {
+        "240000000L": { "fCpu": "240000000L" },
+        "160000000L": { "fCpu": "160000000L" },
+        "80000000L": { "fCpu": "80000000L" },
+        "40000000L": { "fCpu": "40000000L" },
+        "26000000L": { "fCpu": "26000000L" },
+        "20000000L": { "fCpu": "20000000L" },
+        "13000000L": { "fCpu": "13000000L" },
+        "10000000L": { "fCpu": "10000000L" }
+      },
+      "loop_core": {
+        "0": { "defines": ["ARDUINO_RUNNING_CORE=0"] },
+        "1": { "defines": ["ARDUINO_RUNNING_CORE=1"] }
+      },
+      "event_core": {
+        "0": { "defines": ["ARDUINO_EVENT_RUNNING_CORE=0"] },
+        "1": { "defines": ["ARDUINO_EVENT_RUNNING_CORE=1"] }
+      },
+      "debug_level": {
+        "none": { "defines": ["CORE_DEBUG_LEVEL=0"] },
+        "error": { "defines": ["CORE_DEBUG_LEVEL=1"] },
+        "warn": { "defines": ["CORE_DEBUG_LEVEL=2"] },
+        "info": { "defines": ["CORE_DEBUG_LEVEL=3"] },
+        "debug": { "defines": ["CORE_DEBUG_LEVEL=4"] },
+        "verbose": { "defines": ["CORE_DEBUG_LEVEL=5"] }
+      }
+    }
+  }
+}

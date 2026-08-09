@@ -1,0 +1,11 @@
+{
+  "name": "@arduinofast/esp32-xtensa-wasm-packager",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.15.1",
+    "@yowasp/runtime": "11.0.67",
+    "esbuild": "0.25.11"
+  }
+}

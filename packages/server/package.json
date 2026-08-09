@@ -1,0 +1,37 @@
+{
+  "name": "@arduinofast/server",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/gateway.ts",
+    "dev:gateway": "tsx watch src/gateway.ts",
+    "dev:monolith": "tsx watch src/index.ts",
+    "dev:worker": "tsx watch src/worker.ts",
+    "dev:autoscaler": "tsx watch src/autoscale-cli.ts",
+    "start": "node dist/gateway.js",
+    "start:gateway": "node dist/gateway.js",
+    "start:monolith": "node dist/index.js",
+    "start:worker": "node dist/worker.js",
+    "start:autoscaler": "node dist/autoscale-cli.js",
+    "prewarm:avr": "node dist/prewarm-avr-cli.js",
+    "prewarm:esp32": "node dist/prewarm-esp32-cli.js",
+    "prebuild:firmware-assets": "node dist/prebuild-firmware-assets-cli.js",
+    "merge:prebuilt-firmware-assets": "node dist/merge-prebuilt-firmware-manifests-cli.js",
+    "materialize:featured-libraries": "node dist/materialize-featured-libraries-cli.js",
+    "prebuild:featured-firmware": "node dist/prebuild-featured-firmware-cli.js",
+    "merge:featured-firmware": "node dist/merge-featured-firmware-manifests-cli.js",
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@arduinofast/core": "*",
+    "@aws-sdk/client-s3": "^3.1096.0",
+    "@aws-sdk/s3-request-presigner": "^3.1096.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/static": "^10.1.2",
+    "bullmq": "^5.81.2",
+    "fastify": "^5.10.0",
+    "ioredis": "^5.7.0"
+  }
+}

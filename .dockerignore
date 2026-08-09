@@ -1,0 +1,36 @@
+.git
+.gitignore
+.claude
+.codex
+.agents
+.secrets
+.secrets/**
+**/.secrets
+**/.secrets/**
+
+.env
+.env.*
+!.env.example
+
+node_modules
+**/node_modules
+var
+var/**
+**/var
+**/var/**
+dist
+**/dist
+coverage
+**/coverage
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# The Gateway-specific ESP32 allowlist is generated in
+# docker/Dockerfile.gateway.dockerignore. AVR is rebuilt in the image builder.
+packages/web/public/avr
+packages/web/public/avr-probe.html
+
+npm-debug.log*
+*.log
+*.tar
+*.tar.gz

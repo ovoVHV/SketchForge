@@ -1,0 +1,275 @@
+# syntax=docker/dockerfile:1
+#
+# Independent ESP32 compile worker. The browser never installs these tools;
+# they are pinned and verified while the server image is built.
+#
+# Build one target family at a time:
+#   docker build -f docker/Dockerfile.worker-esp32 \
+#     --build-arg TARGET_FAMILY=xtensa -t arduinofast/worker-esp32-xtensa:3.3.7-v2 .
+#   docker build -f docker/Dockerfile.worker-esp32 \
+#     --build-arg TARGET_FAMILY=riscv -t arduinofast/worker-esp32-riscv:3.3.7-v2 .
+#
+# The default final target does not prewarm. CI can build a cache-seeded image
+# explicitly, using the exact runtime cache identity:
+#   docker build -f docker/Dockerfile.worker-esp32 --target prewarmed \
+#     --build-arg TARGET_FAMILY=xtensa \
+#     --build-arg AF_COMPILER_BUNDLE_ID=arduinofast-production-v2 \
+#     --build-arg AF_PREWARM_BOARDS=esp32:esp32:esp32s3 \
+#     -t arduinofast/worker-esp32-xtensa:3.3.7-v2 .
+#
+# xtensa contains ESP32, ESP32-S2, and ESP32-S3. riscv contains ESP32-C3,
+# ESP32-C5, ESP32-C6, ESP32-H2, and both ESP32-P4 SDK revisions.
+
+ARG TARGET_FAMILY=xtensa
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --ignore-scripts
+COPY tsconfig.json tsconfig.base.json ./
+COPY packages/core ./packages/core
+COPY packages/server ./packages/server
+COPY packages/web/public/esp32/v1/libraries ./packages/web/public/esp32/v1/libraries
+RUN npx tsc -b --force packages/core packages/server \
+    && AF_FEATURED_LIBRARY_DIR=/opt/arduinofast/featured-libraries \
+       node packages/server/dist/materialize-featured-libraries-cli.js
+
+FROM node:24-bookworm-slim AS production-dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --omit=dev --ignore-scripts
+
+FROM rust:1.85-bookworm AS ck-build-core-native
+WORKDIR /src/crates/ck-build-core
+COPY crates/ck-build-core/Cargo.toml crates/ck-build-core/Cargo.lock ./
+COPY crates/ck-build-core/src ./src
+RUN cargo build --locked --release --bin ck-build-core
+
+# Arduino ESP32 3.3.7 assets from the official Espressif package index.
+# ESP32-P4 defaults to the early-silicon SDK in Arduino core 3.3.7, so the
+# RISC-V image keeps both the early and later-silicon SDK packages. Only
+# compile-time dependencies are installed: no GDB, OpenOCD, filesystem image
+# tools, dfu-util, or Arduino CLI.
+FROM debian:bookworm-slim AS toolchain
+ARG TARGET_FAMILY
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl tar unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    case "$TARGET_FAMILY" in xtensa|riscv) ;; *) echo "TARGET_FAMILY must be xtensa or riscv" >&2; exit 2 ;; esac; \
+    fetch() { \
+      url="$1"; expected="$2"; output="$3"; \
+      curl -fL --retry 5 --retry-all-errors --connect-timeout 20 -o "$output" "$url"; \
+      printf '%s  %s\n' "$expected" "$output" | sha256sum -c -; \
+    }; \
+    install_sdk() ( \
+      sdk_target="$1"; sdk_sha="$2"; \
+      sdk_url="https://github.com/espressif/arduino-esp32/releases/download/3.3.7/${sdk_target}-libs-3.3.7.zip"; \
+      sdk_archive="/tmp/${sdk_target}-libs-3.3.7.zip"; \
+      sdk_unpack="/tmp/${sdk_target}-libs-unpack"; \
+      fetch "$sdk_url" "$sdk_sha" "$sdk_archive"; \
+      mkdir -p "$sdk_unpack" "/opt/esp32/sdk/$sdk_target"; \
+      unzip -q "$sdk_archive" -d "$sdk_unpack"; \
+      cp -a "$sdk_unpack/${sdk_target}-libs/." "/opt/esp32/sdk/$sdk_target/"; \
+      rm -rf "$sdk_unpack"; \
+      rm -f "$sdk_archive"; \
+    ); \
+    mkdir -p /opt/esp32/platform /opt/esp32/toolchain /opt/esp32/esptool /opt/esp32/sdk; \
+    fetch \
+      'https://github.com/espressif/arduino-esp32/releases/download/3.3.7/esp32-core-3.3.7.zip' \
+      '5267dc9a240daf4b8d26d3a1eb4c4f1dc8a40d43d527e6f6ce08cb6baaf6efac' \
+      /tmp/esp32-core-3.3.7.zip; \
+    mkdir -p /tmp/esp32-core-unpack; \
+    unzip -q /tmp/esp32-core-3.3.7.zip -d /tmp/esp32-core-unpack; \
+    cp -a /tmp/esp32-core-unpack/esp32-core-3.3.7/. /opt/esp32/platform/; \
+    rm -rf /tmp/esp32-core-unpack; \
+    rm -f /tmp/esp32-core-3.3.7.zip; \
+    fetch \
+      'https://github.com/espressif/esptool/releases/download/v5.1.0/esptool-v5.1.0-linux-amd64.tar.gz' \
+      '49d572d50f6b1f089d1d81d3bd3bd357fbcc40f4f8fd4874f2dc51ad534abb01' \
+      /tmp/esptool-v5.1.0-linux-amd64.tar.gz; \
+    tar xzf /tmp/esptool-v5.1.0-linux-amd64.tar.gz \
+      -C /opt/esp32/esptool --strip-components=1; \
+    rm -f /tmp/esptool-v5.1.0-linux-amd64.tar.gz; \
+    if [ "$TARGET_FAMILY" = xtensa ]; then \
+      fetch \
+        'https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20251107/xtensa-esp-elf-14.2.0_20251107-x86_64-linux-gnu.tar.gz' \
+        'c8aced923fe9bb8d3614212aee94b9f354f1c47992ac987f74138997212e0393' \
+        /tmp/xtensa-esp-elf.tar.gz; \
+      tar xzf /tmp/xtensa-esp-elf.tar.gz -C /opt/esp32/toolchain --strip-components=1; \
+      rm -f /tmp/xtensa-esp-elf.tar.gz; \
+      install_sdk esp32 '913cffb43e7fdd8f8ddcd045908fa49f98dfff28832706c850b66fe9ab324bd7'; \
+      install_sdk esp32s2 'd35ecd92751d9e1707d92036b5ad9dc8c3f0fa7490e7097c3c97681a32bd85ca'; \
+      install_sdk esp32s3 '22a3f4ceb2bf503416aa27d72105cd6e9a51ef4c402415b50915d119d08209d4'; \
+      compiler_prefix=xtensa-esp-elf-; \
+      sdk_targets='esp32 esp32s2 esp32s3'; \
+      variant_targets='esp32 esp32s2 esp32s3'; \
+      for target_prefix in xtensa-esp32-elf- xtensa-esp32s2-elf- xtensa-esp32s3-elf-; do \
+        for compiler_tool in gcc g++ gcc-ar size; do \
+          test -x "/opt/esp32/toolchain/bin/${target_prefix}${compiler_tool}"; \
+        done; \
+      done; \
+    else \
+      fetch \
+        'https://github.com/espressif/crosstool-NG/releases/download/esp-14.2.0_20251107/riscv32-esp-elf-14.2.0_20251107-x86_64-linux-gnu.tar.gz' \
+        '051403b578f5c76ab5fbadb5171ec580df7695b16657a97d27e728b92ba64854' \
+        /tmp/riscv32-esp-elf.tar.gz; \
+      tar xzf /tmp/riscv32-esp-elf.tar.gz -C /opt/esp32/toolchain --strip-components=1; \
+      rm -f /tmp/riscv32-esp-elf.tar.gz; \
+      install_sdk esp32c3 '323ccd4a83e634560c22a294a3118c494e6c63133f69586f285187cf431a3939'; \
+      install_sdk esp32c5 '98ee82f4be9e73e590039e533a8229fd2bc20eff558ecd5c44c6f9c541f09352'; \
+      install_sdk esp32c6 'd5ab38ddfc888f70000a7134ea2ecd0a1a29901a9cfe0905cef6cf9cd1ff3008'; \
+      install_sdk esp32h2 '6a3bb401aa9f1a130f045b9176fdea17bd56f5d74406d4f97f52528d5c2bc54c'; \
+      install_sdk esp32p4 '86e7234c52231d831d76f11675ede67eddf6d550e6414cd00afc7ad07e210c5c'; \
+      install_sdk esp32p4_es '79525e0c0930a293bf34c0150b45828963760d0597b35540b1acc5e0a7f71064'; \
+      compiler_prefix=riscv32-esp-elf-; \
+      sdk_targets='esp32c3 esp32c5 esp32c6 esp32h2 esp32p4 esp32p4_es'; \
+      variant_targets='esp32c3 esp32c5 esp32c6 esp32h2 esp32p4'; \
+    fi; \
+    for compiler_tool in gcc g++ gcc-ar size; do \
+      test -x "/opt/esp32/toolchain/bin/${compiler_prefix}${compiler_tool}"; \
+    done; \
+    for sdk_target in $sdk_targets; do \
+      for flag_file in c_flags cpp_flags S_flags defines includes ld_flags ld_libs ld_scripts; do \
+        test -f "/opt/esp32/sdk/${sdk_target}/flags/${flag_file}"; \
+      done; \
+      case "$sdk_target" in \
+        esp32h2) bootloader=bootloader_qio_64m.elf ;; \
+        *) bootloader=bootloader_qio_80m.elf ;; \
+      esac; \
+      test -f "/opt/esp32/sdk/${sdk_target}/bin/${bootloader}"; \
+    done; \
+    for variant_target in $variant_targets; do \
+      test -d "/opt/esp32/platform/variants/${variant_target}"; \
+    done; \
+    test -x /opt/esp32/esptool/esptool; \
+    test -f /opt/esp32/platform/cores/esp32/Arduino.h; \
+    test -f /opt/esp32/platform/tools/gen_esp32part.py; \
+    test -f /opt/esp32/platform/tools/partitions/boot_app0.bin; \
+    test -f /opt/esp32/platform/libraries/Wire/library.properties; \
+    printf '%s\n' \
+      'arduino-esp32-core 3.3.7 sha256:5267dc9a240daf4b8d26d3a1eb4c4f1dc8a40d43d527e6f6ce08cb6baaf6efac' \
+      'esptool 5.1.0 sha256:49d572d50f6b1f089d1d81d3bd3bd357fbcc40f4f8fd4874f2dc51ad534abb01' \
+      "sdk-targets $sdk_targets" \
+      "target-family $TARGET_FAMILY" \
+      > /opt/esp32/ASSETS.txt
+
+FROM node:24-bookworm-slim AS runtime-base
+ARG TARGET_FAMILY
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bubblewrap python3-minimal util-linux \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 arduinofast \
+    && useradd --uid 10001 --gid arduinofast --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast
+
+COPY --from=toolchain /opt/esp32 /opt/esp32
+
+RUN python3 /opt/esp32/platform/tools/gen_esp32part.py --help >/dev/null \
+    && /opt/esp32/esptool/esptool --help >/dev/null \
+    && case "$TARGET_FAMILY" in \
+         xtensa) /opt/esp32/toolchain/bin/xtensa-esp-elf-g++ --version >/dev/null ;; \
+         riscv) /opt/esp32/toolchain/bin/riscv32-esp-elf-g++ --version >/dev/null ;; \
+         *) exit 2 ;; \
+       esac
+
+WORKDIR /app
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/packages/core/dist ./packages/core/dist
+COPY --from=build /app/packages/core/wasm ./packages/core/wasm
+COPY --from=ck-build-core-native /src/crates/ck-build-core/target/release/ck-build-core ./packages/core/native/ck-build-core
+COPY --from=build /app/packages/core/package.json ./packages/core/
+COPY --from=build /app/packages/server/dist ./packages/server/dist
+COPY --from=build /app/packages/server/package.json ./packages/server/
+COPY --from=build /opt/arduinofast/featured-libraries /opt/arduinofast/featured-libraries
+COPY boards ./boards
+COPY prebuild ./prebuild
+COPY packages/web/public/esp32/v1/release.js ./packages/web/public/esp32/v1/release.js
+COPY packages/web/public/esp32/v1/platform-manifests ./packages/web/public/esp32/v1/platform-manifests
+COPY package.json ./
+
+ENV AF_ESP32_CORE=/opt/esp32/platform/cores/esp32 \
+    AF_ESP32_VARIANTS=/opt/esp32/platform/variants \
+    AF_ESP32_PLATFORM=/opt/esp32/platform \
+    AF_ESP32_SDK_ROOT=/opt/esp32/sdk \
+    AF_ESP32_ESPTOOL=/opt/esp32/esptool/esptool \
+    AF_LIBRARIES_DIRS=/opt/esp32/platform/libraries:/opt/arduinofast/featured-libraries \
+    AF_TOOLCHAIN_PARALLELISM=1 \
+    AF_CACHE_DIR=/var/afcache \
+    AF_WORK_DIR=/var/afwork \
+    AF_ARTIFACT_DIR=/var/afartifacts \
+    AF_LIBRARY_STORE_DIR=/var/aflibraries \
+    AF_SANDBOX=bubblewrap \
+    AF_CK_BUILD_CORE_BACKEND=native \
+    AF_CK_BUILD_CORE_NATIVE=/app/packages/core/native/ck-build-core \
+    NODE_ENV=production
+
+RUN install -d -o arduinofast -g arduinofast -m 0750 \
+      /var/afcache /var/afwork /var/afartifacts /var/aflibraries /run/arduinofast
+
+# The orchestrator must use a read-only root filesystem and provide bounded
+# writable mounts only for /var/afcache, /var/afwork, and /tmp.
+USER 10001:10001
+
+CMD ["node", "packages/server/dist/worker.js"]
+
+FROM runtime-base AS runtime-xtensa
+ENV AF_ESP32_XTENSA_BIN=/opt/esp32/toolchain/bin \
+    AF_ESP32_XTENSA_ROOT=/opt/esp32/toolchain \
+    AF_WORKER_POOL=esp32-xtensa
+LABEL com.arduinofast.worker-family="esp32-xtensa"
+
+FROM runtime-base AS runtime-riscv
+ENV AF_ESP32_RISCV_BIN=/opt/esp32/toolchain/bin \
+    AF_ESP32_RISCV_ROOT=/opt/esp32/toolchain \
+    AF_WORKER_POOL=esp32-riscv
+LABEL com.arduinofast.worker-family="esp32-riscv"
+
+# This stage is intentionally not an ancestor of the default final target.
+# It runs the compiled CLI rather than the TypeScript source script, so the
+# exact code copied into a release worker image prepares the cache.
+FROM runtime-${TARGET_FAMILY} AS prewarm-build
+ARG AF_COMPILER_BUNDLE_ID
+ARG AF_PREWARM_BOARDS
+ARG AF_PREWARM_MATRIX=all
+ENV AF_COMPILER_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_BOARDS=${AF_PREWARM_BOARDS} \
+    AF_PREWARM_MATRIX=${AF_PREWARM_MATRIX} \
+    AF_PREWARM_CACHE_DIR=/var/afcache
+
+# A prewarmed cache with a different identity is deliberately a cache miss at
+# runtime. Refuse to build one by accident instead of silently baking a
+# development cache into a production image.
+RUN test -n "$AF_COMPILER_BUNDLE_ID" \
+    || (echo "AF_COMPILER_BUNDLE_ID is required for the prewarmed target" >&2; exit 2)
+RUN node packages/server/dist/prewarm-esp32-cli.js
+
+# A Compose named volume masks /var/afcache, including files baked into the
+# image. Keep the cache in an immutable seed path. The entrypoint adds only
+# missing content-addressed entries once per bundle/seed version, so a fixed
+# named volume can be upgraded without replacing unrelated production cache.
+FROM runtime-${TARGET_FAMILY} AS prewarmed
+ARG AF_COMPILER_BUNDLE_ID
+ARG AF_PREWARM_BOARDS
+ARG AF_PREWARM_MATRIX=all
+ARG TARGET_FAMILY
+ENV AF_COMPILER_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_SEED_DIR=/opt/arduinofast/prewarm-cache \
+    AF_PREWARM_SEED_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_SEED_VERSION=esp32-prewarm-v3/${TARGET_FAMILY}/${AF_PREWARM_MATRIX}/${AF_PREWARM_BOARDS}
+COPY --from=prewarm-build --chown=10001:10001 /var/afcache/ /opt/arduinofast/prewarm-cache/
+VOLUME ["/var/afcache", "/var/afartifacts"]
+LABEL com.arduinofast.cache-prewarmed="true"
+ENTRYPOINT ["node", "packages/server/dist/prewarm-cache-entrypoint.js"]
+
+# Keep this last: `docker build` without --target selects normal final and
+# does not execute the expensive prewarm-build stage.
+FROM runtime-${TARGET_FAMILY} AS final
+VOLUME ["/var/afcache", "/var/afartifacts"]

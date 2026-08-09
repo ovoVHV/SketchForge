@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1.7
+#
+# CI-only builder for the ESP32-C3 RISC-V browser compiler feasibility spike.
+# It produces no application image and must not be used to enable browser
+# routing before the SDK/linker/hardware gates in toolchains/.../README.md pass.
+FROM node:20-bookworm AS build
+
+ARG YOWASP_CLANG_REV=944dd7c774954180e621cc8e12984023a7f8bcbe
+ARG YOWASP_LLVM_REV=97196c8eeb1d495fa43bb8af2fb26af5ef5b89fb
+ARG WASI_LIBC_REV=ac020b86fd44bafe60aa4fa12f407d16e3731329
+ARG BUILD_JOBS=4
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+      bison build-essential ca-certificates ccache cmake curl flex git make ninja-build \
+      python3 xz-utils zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# YoWASP selects CMAKE_SYSTEM_NAME=WASI. Older Debian CMake releases do not
+# ship this platform marker. The old CMake code also needs the WASI variable
+# that newer CMake versions establish internally.
+RUN cmake_root="$(cmake --system-information | sed -n 's/^CMAKE_ROOT "\(.*\)"$/\1/p' | head -n 1)" \
+    && test -n "$cmake_root" \
+    && install -D -m 0644 /dev/null "$cmake_root/Modules/Platform/WASI.cmake" \
+    && printf '%s\n' 'set(WASI 1)' > "$cmake_root/Modules/Platform/WASI.cmake"
+
+ENV PYTHON=python3
+ENV CMAKE_BUILD_PARALLEL_LEVEL=${BUILD_JOBS}
+ENV MAKEFLAGS=-j${BUILD_JOBS}
+WORKDIR /work
+
+RUN case "$BUILD_JOBS" in \
+      ''|*[!0-9]*) echo "BUILD_JOBS must be a positive integer" >&2; exit 2 ;; \
+      *) test "$BUILD_JOBS" -ge 1 ;; \
+    esac
+
+RUN git clone --recursive https://github.com/YoWASP/clang.git yowasp-clang \
+    && cd yowasp-clang \
+    && git checkout --detach "$YOWASP_CLANG_REV" \
+    && git submodule update --init --recursive \
+    && test "$(git rev-parse HEAD)" = "$YOWASP_CLANG_REV" \
+    && test "$(git -C llvm-src rev-parse HEAD)" = "$YOWASP_LLVM_REV" \
+    && test "$(git -C wasi-libc-src rev-parse HEAD)" = "$WASI_LIBC_REV"
+
+COPY toolchains/esp32c3-riscv-wasm/yowasp-riscv-backend.patch /tmp/yowasp-riscv-backend.patch
+RUN cd /work/yowasp-clang \
+    && git apply --check /tmp/yowasp-riscv-backend.patch \
+    && git apply /tmp/yowasp-riscv-backend.patch
+
+# The source build is deliberately isolated from source-control and app assets.
+# BuildKit cache makes reruns practical without making a mutable artifact part
+# of the final image.
+RUN --mount=type=cache,target=/root/.cache/ccache \
+    cd /work/yowasp-clang \
+    && export CCACHE_DIR=/root/.cache/ccache \
+    && ccache --max-size=4G \
+    && ./build.sh \
+    && install -D -m 0644 LICENSE.txt npmjs/LICENSE.txt \
+    && install -D -m 0644 llvm-src/LICENSE.TXT npmjs/licenses/LLVM-LICENSE.TXT \
+    && install -D -m 0644 wasi-libc-src/LICENSE npmjs/licenses/WASI-LIBC-LICENSE \
+    && install -D -m 0644 wasi-libc-src/LICENSE-APACHE npmjs/licenses/WASI-LIBC-LICENSE-APACHE \
+    && install -D -m 0644 wasi-libc-src/LICENSE-MIT npmjs/licenses/WASI-LIBC-LICENSE-MIT \
+    && cd npmjs \
+    && python3 prepare.py \
+    && npm install \
+    && install -D -m 0644 node_modules/@yowasp/runtime/LICENSE.txt licenses/YOWASP-RUNTIME-LICENSE.txt \
+    && printf '%s\n' \
+      '# YoWASP Clang/LLD browser compiler notices' \
+      '' \
+      'The package JavaScript layer is distributed under ISC.' \
+      'LLVM, wasi-libc, and the bundled @yowasp/runtime implementation retain their upstream licenses under licenses/.' \
+      '' > THIRD_PARTY_NOTICES.md \
+    && npm run all \
+    && mkdir -p dist \
+    && npm pack --pack-destination dist
+
+FROM scratch AS artifact
+COPY --from=build /work/yowasp-clang/npmjs/dist/ /dist/
+COPY --from=build /work/yowasp-clang/LICENSE.txt /licenses/YoWASP-Clang-LICENSE.txt
+COPY --from=build /work/yowasp-clang/npmjs/licenses/ /licenses/
+COPY --from=build /work/yowasp-clang/npmjs/THIRD_PARTY_NOTICES.md /licenses/THIRD_PARTY_NOTICES.md

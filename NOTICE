@@ -1,0 +1,13 @@
+ArduinoFast
+Copyright 2026 ArduinoFast contributors
+
+This distribution contains original source code developed for ArduinoFast.
+Original ArduinoFast source is licensed under the Apache License, Version 2.0.
+
+The Apache License applies only to original ArduinoFast contributions. Bundled
+or referenced third-party components retain their own copyright, license, and
+notice terms. The scope and the license files for the browser flashing bundle
+are listed in THIRD_PARTY_NOTICES.md and LICENSES/.
+
+Arduino and Espressif are trademarks of their respective owners. ArduinoFast
+is an independent project and is not an official Arduino or Espressif product.

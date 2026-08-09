@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "avr-gcc-atmega328p-wasm",
+  "version": "0.2.0-ck4",
+  "revision": "f119a74d6ac16f2e97391ea754b8fae84a58c1a365d5196b09404602d2078a00",
+  "artifacts": [
+    {
+      "id": "avr-as-wasm",
+      "kind": "wasm",
+      "size": 761856,
+      "sha256": "cf228116046caa8865bcd49dc8f2cafe1fbf61dabc3920d51ca27cf020d0f34b",
+      "chunks": [
+        {
+          "path": "tools/avr-as.wasm",
+          "size": 761856,
+          "sha256": "cf228116046caa8865bcd49dc8f2cafe1fbf61dabc3920d51ca27cf020d0f34b"
+        }
+      ]
+    },
+    {
+      "id": "avr-ld-wasm",
+      "kind": "wasm",
+      "size": 1078207,
+      "sha256": "8b884781cd1bde8007bc4f878e82335c502f9bed57f62b182d72ec6372371675",
+      "chunks": [
+        {
+          "path": "tools/avr-ld.wasm",
+          "size": 1078207,
+          "sha256": "8b884781cd1bde8007bc4f878e82335c502f9bed57f62b182d72ec6372371675"
+        }
+      ]
+    },
+    {
+      "id": "avr-objcopy-wasm",
+      "kind": "wasm",
+      "size": 725405,
+      "sha256": "9de9e2fcc18f0ce549234340222ab4b301123f1465d670a407ed065d5f02edd4",
+      "chunks": [
+        {
+          "path": "tools/avr-objcopy.wasm",
+          "size": 725405,
+          "sha256": "9de9e2fcc18f0ce549234340222ab4b301123f1465d670a407ed065d5f02edd4"
+        }
+      ]
+    },
+    {
+      "id": "cc1plus-wasm",
+      "kind": "wasm",
+      "size": 13844490,
+      "sha256": "c987b310a29dc685b9ba8bf7710d346cb890d735bf2d5db03d44fe864dc17584",
+      "chunks": [
+        {
+          "path": "tools/cc1plus.wasm",
+          "size": 13844490,
+          "sha256": "c987b310a29dc685b9ba8bf7710d346cb890d735bf2d5db03d44fe864dc17584"
+        }
+      ]
+    },
+    {
+      "id": "runtime-assets",
+      "kind": "asset-pack",
+      "size": 7003178,
+      "sha256": "ae810e7f2e9b5c39d643ed0634d145e3def30e4764009d8710496f39487a155e",
+      "chunks": [
+        {
+          "path": "assets/avr-toolchain-assets-ae810e7f2e9b5c39d643ed0634d145e3def30e4764009d8710496f39487a155e.pack",
+          "size": 7003178,
+          "sha256": "ae810e7f2e9b5c39d643ed0634d145e3def30e4764009d8710496f39487a155e"
+        }
+      ]
+    }
+  ]
+}

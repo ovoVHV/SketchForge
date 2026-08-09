@@ -1,0 +1,29 @@
+{
+  "name": "@arduinofast/esp32-xtensa-clang-wasm",
+  "version": "__VERSION__",
+  "description": "WASI-hosted Espressif LLVM/Clang/LLD toolchain targeting ESP32 Xtensa",
+  "license": "ISC",
+  "type": "module",
+  "files": [
+    "LICENSE.txt",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "gen/bundle.js",
+    "gen/llvm-resources.tar",
+    "gen/llvm.core.wasm",
+    "gen/llvm.core2.wasm",
+    "gen/llvm.core3.wasm",
+    "gen/llvm.core4.wasm",
+    "lib/api.d.ts",
+    "licenses/LLVM-LICENSE.TXT",
+    "licenses/WASI-LIBC-LICENSE",
+    "licenses/WASI-LIBC-LICENSE-APACHE",
+    "licenses/WASI-LIBC-LICENSE-MIT",
+    "licenses/YOWASP-RUNTIME-LICENSE.txt"
+  ],
+  "exports": {
+    "types": "./lib/api.d.ts",
+    "default": "./gen/bundle.js"
+  },
+  "types": "./lib/api.d.ts"
+}

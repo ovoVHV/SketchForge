@@ -1,0 +1,1715 @@
+diff --git a/clang/include/clang/Support/Compiler.h b/clang/include/clang/Support/Compiler.h
+index e1ae3eda4ccc..477d1045b4bd 100644
+--- a/clang/include/clang/Support/Compiler.h
++++ b/clang/include/clang/Support/Compiler.h
+@@ -54,7 +54,7 @@
+ #define CLANG_ABI LLVM_ATTRIBUTE_VISIBILITY_DEFAULT
+ #define CLANG_TEMPLATE_ABI LLVM_ATTRIBUTE_VISIBILITY_DEFAULT
+ #define CLANG_EXPORT_TEMPLATE
+-#elif defined(__MACH__) || defined(__WASM__) || defined(__EMSCRIPTEN__)
++#elif defined(__MACH__) || defined(__wasm__) || defined(__EMSCRIPTEN__)
+ #define CLANG_ABI LLVM_ATTRIBUTE_VISIBILITY_DEFAULT
+ #define CLANG_TEMPLATE_ABI
+ #define CLANG_EXPORT_TEMPLATE
+diff --git a/clang/lib/AST/ByteCode/Interp.cpp b/clang/lib/AST/ByteCode/Interp.cpp
+index 6bcebf3ee892..1048756fd962 100644
+--- a/clang/lib/AST/ByteCode/Interp.cpp
++++ b/clang/lib/AST/ByteCode/Interp.cpp
+@@ -41,7 +41,7 @@ using namespace clang::interp;
+ // to handle the way we use tailcalls.
+ // PPC can't tail-call external calls, which is a problem for InterpNext.
+ #if defined(_MSC_VER) || defined(__powerpc__) || !defined(MUSTTAIL) ||         \
+-    defined(__i386__) || defined(__sparc__)
++    defined(__i386__) || defined(__sparc__) || defined(__wasm__)
+ #undef MUSTTAIL
+ #define MUSTTAIL
+ #define USE_TAILCALLS 0
+diff --git a/clang/lib/Driver/Driver.cpp b/clang/lib/Driver/Driver.cpp
+index c0debf5d657b..cf1dca2d9089 100644
+--- a/clang/lib/Driver/Driver.cpp
++++ b/clang/lib/Driver/Driver.cpp
+@@ -1935,7 +1935,7 @@ bool Driver::getCrashDiagnosticFile(StringRef ReproCrashFilename,
+     CrashDiagDir = "/";
+   path::append(CrashDiagDir, "Library/Logs/DiagnosticReports");
+   int PID =
+-#if LLVM_ON_UNIX
++#if LLVM_ON_UNIX && !defined(__wasi__)
+       getpid();
+ #else
+       0;
+diff --git a/clang/lib/Driver/ToolChain.cpp b/clang/lib/Driver/ToolChain.cpp
+index 511eb3757456..26f5f1489674 100644
+--- a/clang/lib/Driver/ToolChain.cpp
++++ b/clang/lib/Driver/ToolChain.cpp
+@@ -1271,6 +1271,16 @@ std::string ToolChain::GetLinkerPath(bool *LinkerIsLLD) const {
+       return GetProgramPath(DefaultLinker);
+   }
+ 
++#if defined(__wasi__)
++  // The browser wrapper executes -### jobs by dispatching llvm-driver's
++  // built-in tools. There is no executable ld.lld file for can_execute().
++  if (UseLinker == "lld") {
++    if (LinkerIsLLD)
++      *LinkerIsLLD = true;
++    return "ld.lld";
++  }
++#endif
++
+   // Extending -fuse-ld= to an absolute or relative path is unexpected. Checking
+   // for the linker flavor is brittle. In addition, prepending "ld." or "ld64."
+   // to a relative path is surprising. This is more complex due to priorities
+diff --git a/clang/tools/driver/driver.cpp b/clang/tools/driver/driver.cpp
+index f22c4b7050b8..6e5c1d1b770f 100644
+--- a/clang/tools/driver/driver.cpp
++++ b/clang/tools/driver/driver.cpp
+@@ -56,8 +56,10 @@
+ #include <set>
+ #include <system_error>
+ #if LLVM_ON_UNIX
++#if !defined(__wasi__)
+ #include <signal.h>
+ #endif
++#endif
+ 
+ using namespace clang;
+ using namespace clang::driver;
+@@ -474,7 +476,7 @@ int clang_main(int Argc, char **Argv, const llvm::ToolContext &ToolContext) {
+     Res = 1;
+ #endif
+ 
+-#if LLVM_ON_UNIX
++#if LLVM_ON_UNIX && !defined(__wasi__)
+   // On Unix, signals are represented by return codes of 128 plus the signal
+   // number. If the return code indicates it was from a signal handler, raise
+   // the signal so that the exit code includes the signal number, as required
+diff --git a/libcxx/src/filesystem/operations.cpp b/libcxx/src/filesystem/operations.cpp
+index 3d358dd55e8b..5daa62c564dc 100644
+--- a/libcxx/src/filesystem/operations.cpp
++++ b/libcxx/src/filesystem/operations.cpp
+@@ -41,7 +41,7 @@
+ #include <time.h>
+ 
+ // since Linux 4.5 and FreeBSD 13, but the Linux libc wrapper is only provided by glibc >= 2.27 and musl
+-#if _LIBCPP_GLIBC_PREREQ(2, 27) || _LIBCPP_HAS_MUSL_LIBC || defined(__FreeBSD__)
++#if _LIBCPP_GLIBC_PREREQ(2, 27) || (_LIBCPP_HAS_MUSL_LIBC && !defined(__wasi__)) || defined(__FreeBSD__)
+ #  define _LIBCPP_FILESYSTEM_USE_COPY_FILE_RANGE
+ #endif
+ 
+diff --git a/lld/CMakeLists.txt b/lld/CMakeLists.txt
+index 80e25204a65e..785f7a9ebe76 100644
+--- a/lld/CMakeLists.txt
++++ b/lld/CMakeLists.txt
+@@ -171,6 +171,12 @@ endif()
+ option(LLD_BUILD_TOOLS
+   "Build the lld tools. If OFF, just generate build targets." ON)
+ 
++option(LLD_BUILD_ONLY_ELF
++  "Build only the ELF linker driver." OFF)
++if (LLD_BUILD_ONLY_ELF)
++  add_definitions("-DLLD_BUILD_ONLY_ELF=1")
++endif()
++
+ option(LLD_DEFAULT_LD_LLD_IS_MINGW
+     "Use MinGW as the default backend for ld.lld. If OFF, ELF will be used." OFF)
+ if (LLD_DEFAULT_LD_LLD_IS_MINGW)
+@@ -193,18 +199,22 @@ add_subdirectory(tools/lld)
+ if (LLVM_INCLUDE_TESTS)
+   add_custom_target(LLDUnitTests)
+   set_target_properties(LLDUnitTests PROPERTIES FOLDER "LLD/Tests")
+-  if (TARGET llvm_gtest)
++  if (TARGET llvm_gtest AND NOT LLD_BUILD_ONLY_ELF)
+     add_subdirectory(unittests)
+   endif()
+   add_subdirectory(test)
+ endif()
+ 
+ add_subdirectory(docs)
+-add_subdirectory(COFF)
+-add_subdirectory(ELF)
+-add_subdirectory(MachO)
+-add_subdirectory(MinGW)
+-add_subdirectory(wasm)
++if (LLD_BUILD_ONLY_ELF)
++  add_subdirectory(ELF)
++else()
++  add_subdirectory(COFF)
++  add_subdirectory(ELF)
++  add_subdirectory(MachO)
++  add_subdirectory(MinGW)
++  add_subdirectory(wasm)
++endif()
+ 
+ add_custom_target(lld-headers)
+ set_target_properties(lld-headers PROPERTIES FOLDER "Misc")
+diff --git a/lld/Common/Filesystem.cpp b/lld/Common/Filesystem.cpp
+index c2d3644191c9..c2c97c482ec1 100644
+--- a/lld/Common/Filesystem.cpp
++++ b/lld/Common/Filesystem.cpp
+@@ -75,7 +75,7 @@ void lld::unlinkAsync(StringRef path) {
+       sys::fs::remove(tmpName);
+   }
+   sys::fs::remove(path);
+-#else
++#elif !defined(__wasi__)
+   if (parallel::strategy.ThreadsRequested == 1)
+     return;
+ 
+diff --git a/lld/ELF/Arch/Xtensa.cpp b/lld/ELF/Arch/Xtensa.cpp
+index b19176752e70..f349002501aa 100644
+--- a/lld/ELF/Arch/Xtensa.cpp
++++ b/lld/ELF/Arch/Xtensa.cpp
+@@ -28,6 +28,9 @@ public:
+   Xtensa(Ctx &ctx);
+   RelExpr getRelExpr(RelType type, const Symbol &s,
+                      const uint8_t *loc) const override;
++  int64_t getImplicitAddend(const uint8_t *buf, RelType type) const override;
++  int64_t adjustRelocationAddend(const uint8_t *buf, RelType type,
++                                 int64_t addend) const override;
+   void relocate(uint8_t *loc, const Relocation &rel,
+                 uint64_t val) const override;
+ };
+@@ -36,6 +39,23 @@ public:
+ 
+ Xtensa::Xtensa(Ctx &ctx) : TargetInfo(ctx) {}
+ 
++int64_t Xtensa::getImplicitAddend(const uint8_t *buf, RelType type) const {
++  switch (type) {
++  case R_XTENSA_32:
++    return SignExtend64<32>(read32le(buf));
++  default:
++    InternalErr(ctx, buf) << "cannot read addend for relocation " << type;
++    return 0;
++  }
++}
++
++int64_t Xtensa::adjustRelocationAddend(const uint8_t *buf, RelType type,
++                                      int64_t addend) const {
++  // Xtensa RELA objects keep the R_XTENSA_32 addend in the relocated word.
++  // Consume it before GC and merge-section offset mapping, matching GNU ld.
++  return type == R_XTENSA_32 ? addend + getImplicitAddend(buf, type) : addend;
++}
++
+ RelExpr Xtensa::getRelExpr(RelType type, const Symbol &s,
+                            const uint8_t *loc) const {
+   switch (type) {
+diff --git a/lld/ELF/DWARF.cpp b/lld/ELF/DWARF.cpp
+index 78fd013bef22..838f5c025ceb 100644
+--- a/lld/ELF/DWARF.cpp
++++ b/lld/ELF/DWARF.cpp
+@@ -16,6 +16,7 @@
+ #include "DWARF.h"
+ #include "InputSection.h"
+ #include "Symbols.h"
++#include "Target.h"
+ 
+ using namespace llvm;
+ using namespace llvm::object;
+@@ -124,7 +125,13 @@ LLDDwarfObj<ELFT>::findAux(const InputSectionBase &sec, uint64_t pos,
+     val = dr->value;
+ 
+   DataRefImpl d;
+-  d.p = getAddend<ELFT>(rel);
++  int64_t addend = getAddend<ELFT>(rel);
++  if constexpr (RelTy::HasAddend) {
++    RelType type = rel.getType(ctx.arg.isMips64EL);
++    addend = ctx.target->adjustRelocationAddend(
++        sec.content().data() + rel.r_offset, type, addend);
++  }
++  d.p = addend;
+   return RelocAddrEntry{secIndex, RelocationRef(d, nullptr),
+                         val,      std::optional<object::RelocationRef>(),
+                         0,        LLDRelocationResolver<RelTy>::resolve};
+diff --git a/lld/ELF/InputSection.cpp b/lld/ELF/InputSection.cpp
+index c78800787d27..aa1686abf338 100644
+--- a/lld/ELF/InputSection.cpp
++++ b/lld/ELF/InputSection.cpp
+@@ -446,17 +446,26 @@ void InputSection::copyRelocations(Ctx &ctx, uint8_t *buf) {
+     struct MapRel {
+       Ctx &ctx;
+       const ObjFile<ELFT> &file;
++      const InputSectionBase &relocatedSection;
+       Relocation operator()(const RelTy &rel) const {
++        RelType type = rel.getType(ctx.arg.isMips64EL);
++        int64_t addend = getAddend<ELFT>(rel);
++        if constexpr (RelTy::HasAddend)
++          if (!ctx.arg.relocatable)
++            addend = ctx.target->adjustRelocationAddend(
++                relocatedSection.content().data() + rel.r_offset, type,
++                addend);
+         // RelExpr is not used so set to a dummy value.
+-        return Relocation{R_NONE, rel.getType(ctx.arg.isMips64EL), rel.r_offset,
+-                          getAddend<ELFT>(rel), &file.getRelocTargetSym(rel)};
++        return Relocation{R_NONE, type, rel.r_offset, addend,
++                          &file.getRelocTargetSym(rel)};
+       }
+     };
+ 
+     using RawRels = ArrayRef<RelTy>;
+     using MapRelIter =
+         llvm::mapped_iterator<typename RawRels::iterator, MapRel>;
+-    auto mapRel = MapRel{ctx, *getFile<ELFT>()};
++    auto mapRel =
++        MapRel{ctx, *getFile<ELFT>(), *getRelocatedSection()};
+     RawRels rawRels = getDataAs<RelTy>();
+     auto rels = llvm::make_range(MapRelIter(rawRels.begin(), mapRel),
+                                  MapRelIter(rawRels.end(), mapRel));
+@@ -1073,9 +1082,11 @@ void InputSection::relocateNonAlloc(Ctx &ctx, uint8_t *buf,
+     const RelType type = rel.getType(ctx.arg.isMips64EL);
+     const uint64_t offset = rel.r_offset;
+     uint8_t *bufLoc = buf + offset;
+-    int64_t addend = getAddend<ELFT>(rel);
+-    if (!RelTy::HasAddend)
+-      addend += target.getImplicitAddend(bufLoc, type);
++    int64_t addend =
++        RelTy::HasAddend
++            ? target.adjustRelocationAddend(bufLoc, type,
++                                             getAddend<ELFT>(rel))
++            : target.getImplicitAddend(bufLoc, type);
+ 
+     Symbol &sym = f->getRelocTargetSym(rel);
+     RelExpr expr = target.getRelExpr(type, sym, bufLoc);
+@@ -1437,10 +1448,12 @@ void EhInputSection::preprocessRelocs(Relocs<RelTy> elfRels) {
+     Symbol &sym = file->getSymbol(rel.getSymbol(ctx.arg.isMips64EL));
+     RelType type = rel.getType(ctx.arg.isMips64EL);
+     RelExpr expr = ctx.target->getRelExpr(type, sym, content().data() + offset);
++    const uint8_t *loc = content().data() + offset;
+     int64_t addend =
+         RelTy::HasAddend
+-            ? getAddend<ELFT>(rel)
+-            : ctx.target->getImplicitAddend(content().data() + offset, type);
++            ? ctx.target->adjustRelocationAddend(loc, type,
++                                                  getAddend<ELFT>(rel))
++            : ctx.target->getImplicitAddend(loc, type);
+     rels.push_back({expr, type, offset, addend, &sym});
+   }
+ }
+diff --git a/lld/ELF/MarkLive.cpp b/lld/ELF/MarkLive.cpp
+index 7d8a3748b4ea..1a3f97e46b75 100644
+--- a/lld/ELF/MarkLive.cpp
++++ b/lld/ELF/MarkLive.cpp
+@@ -98,16 +98,20 @@ static uint64_t getAddend(Ctx &ctx, InputSectionBase &sec,
+ }
+ 
+ template <class ELFT>
+-static uint64_t getAddend(Ctx &, InputSectionBase &sec,
++static uint64_t getAddend(Ctx &ctx, InputSectionBase &sec,
+                           const typename ELFT::Rela &rel) {
+-  return rel.r_addend;
++  RelType type = rel.getType(ctx.arg.isMips64EL);
++  return ctx.target->adjustRelocationAddend(
++      sec.content().begin() + rel.r_offset, type, rel.r_addend);
+ }
+ 
+ // Currently, we assume all input CREL relocations have an explicit addend.
+ template <class ELFT>
+-static uint64_t getAddend(Ctx &, InputSectionBase &sec,
++static uint64_t getAddend(Ctx &ctx, InputSectionBase &sec,
+                           const typename ELFT::Crel &rel) {
+-  return rel.r_addend;
++  RelType type = rel.getType(ctx.arg.isMips64EL);
++  return ctx.target->adjustRelocationAddend(
++      sec.content().begin() + rel.r_offset, type, rel.r_addend);
+ }
+ 
+ template <class ELFT, bool TrackWhyLive>
+diff --git a/lld/ELF/OutputSections.cpp b/lld/ELF/OutputSections.cpp
+index ce5f1e551078..0b7b3ebca579 100644
+--- a/lld/ELF/OutputSections.cpp
++++ b/lld/ELF/OutputSections.cpp
+@@ -669,6 +669,19 @@ encodeOneCrel(Ctx &ctx, raw_svector_ostream &os,
+   }
+ }
+ 
++template <class ELFT, class RelTy>
++static int64_t getOutputRelocAddend(Ctx &ctx, InputSectionBase &sec,
++                                    const RelTy &rel) {
++  int64_t addend = getAddend<ELFT>(rel);
++  if constexpr (RelTy::HasAddend)
++    if (!ctx.arg.relocatable) {
++      RelType type = rel.getType(ctx.arg.isMips64EL);
++      addend = ctx.target->adjustRelocationAddend(
++          sec.content().data() + rel.r_offset, type, addend);
++    }
++  return addend;
++}
++
+ template <class ELFT>
+ static size_t relToCrel(Ctx &ctx, raw_svector_ostream &os,
+                         Elf_Crel<ELFT::Is64Bits> &out, InputSection *relSec,
+@@ -681,9 +694,10 @@ static size_t relToCrel(Ctx &ctx, raw_svector_ostream &os,
+   }
+   auto rels = relSec->getDataAs<typename ELFT::Rela>();
+   for (auto rel : rels) {
++    int64_t addend = getOutputRelocAddend<ELFT>(ctx, *sec, rel);
+     encodeOneCrel<typename ELFT::uint>(
+         ctx, os, out, sec->getVA(rel.r_offset), file.getRelocTargetSym(rel),
+-        rel.getType(ctx.arg.isMips64EL), getAddend<ELFT>(rel));
++        rel.getType(ctx.arg.isMips64EL), addend);
+   }
+   return rels.size();
+ }
+@@ -704,8 +718,13 @@ template <bool is64> void OutputSection::finalizeNonAllocCrel(Ctx &ctx) {
+       RelocsCrel<is64> entries(relSec->content_);
+       totalCount += entries.size();
+       for (Elf_Crel_Impl<is64> r : entries) {
++        int64_t addend = r.r_addend;
++        if (!ctx.arg.relocatable)
++          addend = ctx.target->adjustRelocationAddend(
++              sec->content().data() + r.r_offset, RelType(r.r_type),
++              addend);
+         encodeOneCrel<uint>(ctx, os, out, uint(sec->getVA(r.r_offset)),
+-                            file.getSymbol(r.r_symidx), r.r_type, r.r_addend);
++                            file.getSymbol(r.r_symidx), r.r_type, addend);
+       }
+       continue;
+     }
+diff --git a/lld/ELF/RelocScan.h b/lld/ELF/RelocScan.h
+index 526482a156cc..2810affa0741 100644
+--- a/lld/ELF/RelocScan.h
++++ b/lld/ELF/RelocScan.h
+@@ -176,9 +176,11 @@ public:
+ 
+ template <class ELFT, class RelTy>
+ int64_t RelocScan::getAddend(const RelTy &r, RelType type) {
+-  return RelTy::HasAddend ? elf::getAddend<ELFT>(r)
+-                          : ctx.target->getImplicitAddend(
+-                                sec->content().data() + r.r_offset, type);
++  const uint8_t *loc = sec->content().data() + r.r_offset;
++  return RelTy::HasAddend
++             ? ctx.target->adjustRelocationAddend(
++                   loc, type, elf::getAddend<ELFT>(r))
++             : ctx.target->getImplicitAddend(loc, type);
+ }
+ 
+ template <class ELFT, class RelTy>
+@@ -191,6 +193,10 @@ void RelocScan::scan(typename Relocs<RelTy>::const_iterator &it, RelType type,
+   RelExpr expr =
+       ctx.target->getRelExpr(type, sym, sec->content().data() + offset);
+ 
++  // Ignore R_*_NONE and target-specific marker relocations.
++  if (expr == R_NONE)
++    return;
++
+   // Error if the target symbol is undefined. Symbol index 0 may be used by
+   // marker relocations, e.g. R_*_NONE and R_ARM_V4BX. Don't error on them.
+   if (sym.isUndefined() && symIdx != 0 &&
+diff --git a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
+index b9a42590dc8e..d9a92394aa84 100644
+--- a/lld/ELF/SyntheticSections.cpp
++++ b/lld/ELF/SyntheticSections.cpp
+@@ -3073,11 +3073,18 @@ DebugNamesSection<ELFT>::DebugNamesSection(Ctx &ctx)
+ template <class ELFT>
+ template <class RelTy>
+ void DebugNamesSection<ELFT>::getNameRelocs(
+-    const InputFile &file, DenseMap<uint32_t, uint32_t> &relocs,
+-    Relocs<RelTy> rels) {
++    const InputSectionBase &sec, const InputFile &file,
++    DenseMap<uint32_t, uint32_t> &relocs, Relocs<RelTy> rels) {
+   for (const RelTy &rel : rels) {
+     Symbol &sym = file.getRelocTargetSym(rel);
+-    relocs[rel.r_offset] = sym.getVA(ctx, getAddend<ELFT>(rel));
++    RelType type = rel.getType(ctx.arg.isMips64EL);
++    const uint8_t *loc = sec.content().data() + rel.r_offset;
++    int64_t addend =
++        RelTy::HasAddend
++            ? ctx.target->adjustRelocationAddend(
++                  loc, type, getAddend<ELFT>(rel))
++            : ctx.target->getImplicitAddend(loc, type);
++    relocs[rel.r_offset] = sym.getVA(ctx, addend);
+   }
+ }
+ 
+@@ -3086,7 +3093,8 @@ template <class ELFT> void DebugNamesSection<ELFT>::finalizeContents() {
+   auto relocs = std::make_unique<DenseMap<uint32_t, uint32_t>[]>(numChunks);
+   parallelFor(0, numChunks, [&](size_t i) {
+     InputSection *sec = inputSections[i];
+-    invokeOnRelocs(*sec, getNameRelocs, *sec->file, relocs.get()[i]);
++    invokeOnRelocs(*sec, getNameRelocs, *sec, *sec->file,
++                   relocs.get()[i]);
+ 
+     // Relocate CU offsets with .debug_info + X relocations.
+     OutputChunk &chunk = chunks.get()[i];
+diff --git a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
+index 38a8bb9b320f..94d89101ae5c 100644
+--- a/lld/ELF/SyntheticSections.h
++++ b/lld/ELF/SyntheticSections.h
+@@ -945,7 +945,8 @@ public:
+   void writeTo(uint8_t *buf) override;
+ 
+   template <class RelTy>
+-  void getNameRelocs(const InputFile &file,
++  void getNameRelocs(const InputSectionBase &sec,
++                     const InputFile &file,
+                      llvm::DenseMap<uint32_t, uint32_t> &relocs,
+                      Relocs<RelTy> rels);
+ 
+diff --git a/lld/ELF/Target.cpp b/lld/ELF/Target.cpp
+index 89cc9357cac1..fb33efaaf1a2 100644
+--- a/lld/ELF/Target.cpp
++++ b/lld/ELF/Target.cpp
+@@ -124,6 +124,11 @@ int64_t TargetInfo::getImplicitAddend(const uint8_t *buf, RelType type) const {
+   return 0;
+ }
+ 
++int64_t TargetInfo::adjustRelocationAddend(const uint8_t *, RelType,
++                                           int64_t addend) const {
++  return addend;
++}
++
+ bool TargetInfo::usesOnlyLowPageBits(RelType type) const { return false; }
+ 
+ bool TargetInfo::needsThunk(RelExpr expr, RelType type, const InputFile *file,
+diff --git a/lld/ELF/Target.h b/lld/ELF/Target.h
+index dc100d16d028..f98fa05de14b 100644
+--- a/lld/ELF/Target.h
++++ b/lld/ELF/Target.h
+@@ -42,6 +42,8 @@ public:
+   virtual void writeGotPlt(uint8_t *buf, const Symbol &s) const {}
+   virtual void writeIgotPlt(uint8_t *buf, const Symbol &s) const {}
+   virtual int64_t getImplicitAddend(const uint8_t *buf, RelType type) const;
++  virtual int64_t adjustRelocationAddend(const uint8_t *buf, RelType type,
++                                         int64_t addend) const;
+ 
+   // If lazy binding is supported, the first entry of the PLT has code
+   // to call the dynamic linker to resolve PLT entries the first time
+diff --git a/lld/test/ELF/xtensa-reloc-abs-addend.s b/lld/test/ELF/xtensa-reloc-abs-addend.s
+new file mode 100644
+index 000000000000..da9b1059d5c9
+--- /dev/null
++++ b/lld/test/ELF/xtensa-reloc-abs-addend.s
+@@ -0,0 +1,209 @@
++# REQUIRES: xtensa
++# RUN: rm -rf %t && split-file %s %t
++# RUN: llvm-mc -filetype=obj -triple=xtensa -mcpu=esp32 %t/main.s -o %t/main.o
++# RUN: llvm-mc -filetype=obj -triple=xtensa -mcpu=esp32 --crel %t/main.s -o %t/main.crel.o
++# RUN: llvm-mc -filetype=obj -triple=xtensa -mcpu=esp32 %t/extra.s -o %t/extra.o
++# RUN: llvm-readelf -r -x .data.ptr %t/main.o | FileCheck %s --check-prefix=RAW-RELA
++# RUN: llvm-readelf -r -x .data.ptr %t/main.crel.o | FileCheck %s --check-prefix=RAW-CREL
++
++# RUN: ld.lld %t/main.o --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/nogc
++# RUN: llvm-readelf -x .data %t/nogc | FileCheck %s --check-prefix=NOGC
++# RUN: ld.lld %t/main.o --gc-sections -u ptr --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/gc
++# RUN: llvm-readelf -x .data -p .rodata %t/gc | FileCheck %s --check-prefix=GC
++
++## A relocatable link must preserve Xtensa's raw addend split so a second link
++## consumes the location word exactly once.
++# RUN: ld.lld -r %t/main.o -o %t/rel.o
++# RUN: llvm-readelf -r -x .data.ptr %t/rel.o | FileCheck %s --check-prefix=RAW-RELA
++# RUN: ld.lld %t/rel.o --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/rel-linked
++# RUN: llvm-readelf -x .data %t/rel-linked | FileCheck %s --check-prefix=NOGC
++# RUN: ld.lld -r %t/main.crel.o -o %t/crel.o
++# RUN: llvm-readelf -r -x .data.ptr %t/crel.o | FileCheck %s --check-prefix=RAW-CREL
++# RUN: ld.lld %t/crel.o --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/crel-linked
++# RUN: llvm-readelf -x .data %t/crel-linked | FileCheck %s --check-prefix=NOGC
++
++## A final link keeps relocated contents, so retained relocations need a
++## normalized explicit addend for post-link consumers.
++# RUN: ld.lld %t/main.o --emit-relocs --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/emit
++# RUN: llvm-readelf -r -x .data %t/emit | FileCheck %s --check-prefix=EMIT-RELA
++# RUN: ld.lld %t/main.crel.o --emit-relocs --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/emit-crel
++# RUN: llvm-readelf -r -x .data %t/emit-crel | FileCheck %s --check-prefix=EMIT-CREL
++# RUN: ld.lld %t/main.crel.o %t/extra.o --emit-relocs --image-base=0 --section-start=.data=0x1000 --section-start=.rodata=0x2000 -o %t/emit-mixed
++# RUN: llvm-readelf -r %t/emit-mixed | FileCheck %s --check-prefix=EMIT-MIXED
++
++## DWARF consumers inspect relocations before relocateNonAlloc writes output.
++# RUN: ld.lld %t/main.o --gdb-index -e _start --image-base=0 --section-start=.text=0x1000 -o %t/gdb-index
++# RUN: llvm-dwarfdump --gdb-index %t/gdb-index | FileCheck %s --check-prefix=GDB
++# RUN: ld.lld %t/main.o --debug-names -e _start -o %t/debug-names
++# RUN: llvm-dwarfdump --debug-names %t/debug-names | FileCheck %s --check-prefix=DEBUG-NAMES
++
++# RAW-RELA:      Relocation section '.rela.data.ptr'
++# RAW-RELA:      R_XTENSA_32 {{.*}} .rodata.str1.1 + 0
++# RAW-RELA:      Hex dump of section '.data.ptr':
++# RAW-RELA-NEXT: 0x00000000 06000000
++
++# RAW-CREL:      Relocation section '.crel.data.ptr'
++# RAW-CREL:      R_XTENSA_32 {{.*}} .rodata.str1.1 + 0
++# RAW-CREL:      Hex dump of section '.data.ptr':
++# RAW-CREL-NEXT: 0x00000000 06000000
++
++# NOGC:      Hex dump of section '.data':
++# NOGC-NEXT: 0x00001000 06200000
++
++# GC:      Hex dump of section '.data':
++# GC-NEXT: 0x00001000 00200000
++# GC:      String dump of section '.rodata':
++# GC-NEXT: [     0]  target
++# GC-NOT:  first
++
++# EMIT-RELA:      Relocation section '.rela.data'
++# EMIT-RELA:      R_XTENSA_32 {{.*}} .rodata + 6
++# EMIT-RELA:      Hex dump of section '.data':
++# EMIT-RELA-NEXT: 0x00001000 06200000
++
++# EMIT-CREL:      Relocation section '.crel.data'
++# EMIT-CREL:      R_XTENSA_32 {{.*}} .rodata + 6
++# EMIT-CREL:      Hex dump of section '.data':
++# EMIT-CREL-NEXT: 0x00001000 06200000
++
++# EMIT-MIXED: Relocation section '.crel.data'
++# EMIT-MIXED: R_XTENSA_32 {{.*}} extra_target + 3
++
++# GDB:      Address area offset = {{.*}}, has 1 entries:
++# GDB-NEXT: Low/High address = [0x1006, 0x1007) (Size: 0x1), CU id = 0
++
++# DEBUG-NAMES:      .debug_names contents:
++# DEBUG-NAMES-NOT:  "wrong"
++# DEBUG-NAMES:      String: {{.*}} "good"
++# DEBUG-NAMES-NOT:  "wrong"
++
++#--- main.s
++  .section .rodata.str1.1,"aMS",@progbits,1
++  .asciz "first"
++  .asciz "target"
++
++  .section .data.ptr,"aw",@progbits
++  .global ptr
++  .type ptr,@object
++ptr:
++  .long 6
++  .reloc ptr, R_XTENSA_32, .rodata.str1.1
++  .size ptr, .-ptr
++
++  .text
++  .global _start
++  .type _start,@function
++_start:
++.Lfunc_begin0:
++  .zero 8
++.Lfunc_end0:
++  .size _start, .-_start
++
++  .section .debug_abbrev,"",@progbits
++  .byte 1                       # DW_TAG_compile_unit
++  .byte 17
++  .byte 1                       # DW_CHILDREN_yes
++  .byte 3                       # DW_AT_name, DW_FORM_strp
++  .byte 14
++  .byte 17                      # DW_AT_low_pc, DW_FORM_addr
++  .byte 1
++  .byte 18                      # DW_AT_high_pc, DW_FORM_data4
++  .byte 6
++  .byte 0
++  .byte 0
++  .byte 2                       # DW_TAG_subprogram
++  .byte 46
++  .byte 0                       # DW_CHILDREN_no
++  .byte 3                       # DW_AT_name, DW_FORM_strp
++  .byte 14
++  .byte 17                      # DW_AT_low_pc, DW_FORM_addr
++  .byte 1
++  .byte 18                      # DW_AT_high_pc, DW_FORM_data4
++  .byte 6
++  .byte 63                      # DW_AT_external, DW_FORM_flag_present
++  .byte 25
++  .byte 0
++  .byte 0
++  .byte 0
++
++  .section .debug_str,"MS",@progbits,1
++  .asciz "wrong"
++  .asciz "good"
++
++  .section .debug_info,"",@progbits
++.Lcu_begin0:
++  .long .Ldebug_info_end0-.Ldebug_info_start0
++.Ldebug_info_start0:
++  .short 4
++  .long 0                       # .debug_abbrev starts at zero
++  .byte 4                       # address size
++  .byte 1                       # compile unit DIE
++.Lcu_name:
++  .long 6
++  .reloc .Lcu_name, R_XTENSA_32, .debug_str
++.Lcu_low_pc:
++  .long 6
++  .reloc .Lcu_low_pc, R_XTENSA_32, _start
++  .long 1
++.Lsubprogram_die:
++  .byte 2                       # subprogram DIE
++.Lsubprogram_name:
++  .long 6
++  .reloc .Lsubprogram_name, R_XTENSA_32, .debug_str
++  .long _start
++  .long .Lfunc_end0-.Lfunc_begin0
++  .byte 0                       # end of compile unit children
++.Ldebug_info_end0:
++
++  .section .debug_names,"",@progbits
++  .long .Lnames_end0-.Lnames_start0
++.Lnames_start0:
++  .short 5
++  .short 0
++  .long 1                       # compilation unit count
++  .long 0                       # local type unit count
++  .long 0                       # foreign type unit count
++  .long 1                       # bucket count
++  .long 1                       # name count
++  .long .Lnames_abbrev_end0-.Lnames_abbrev_start0
++  .long 8
++  .ascii "LLVM0700"
++  .long .Lcu_begin0
++  .long 1                       # bucket 0
++  .long 2090299758              # DJB hash of "good"
++.Lname_string_offset:
++  .long 6
++  .reloc .Lname_string_offset, R_XTENSA_32, .debug_str
++  .long .Lname_entry-.Lnames_entries0
++.Lnames_abbrev_start0:
++  .byte 1                       # abbreviation code
++  .byte 46                      # DW_TAG_subprogram
++  .byte 3                       # DW_IDX_die_offset
++  .byte 19                      # DW_FORM_ref4
++  .byte 4                       # DW_IDX_parent
++  .byte 25                      # DW_FORM_flag_present
++  .byte 0
++  .byte 0
++  .byte 0
++.Lnames_abbrev_end0:
++.Lnames_entries0:
++.Lname_entry:
++  .byte 1
++  .long .Lsubprogram_die-.Lcu_begin0
++  .byte 0
++  .p2align 2, 0
++.Lnames_end0:
++
++#--- extra.s
++  .section .rodata.extra,"a",@progbits
++  .global extra_target
++extra_target:
++  .byte 0
++
++  .section .data.extra,"aw",@progbits
++  .global ptr2
++  .type ptr2,@object
++ptr2:
++  .long 3
++  .reloc ptr2, R_XTENSA_32, extra_target
++  .size ptr2, .-ptr2
+diff --git a/lld/tools/lld/CMakeLists.txt b/lld/tools/lld/CMakeLists.txt
+index 1d1a7ff448b7..fa56fdf03c42 100644
+--- a/lld/tools/lld/CMakeLists.txt
++++ b/lld/tools/lld/CMakeLists.txt
+@@ -24,21 +24,35 @@ function(lld_target_link_libraries target type)
+   target_link_libraries(${target} ${type} ${ARGN})
+ endfunction()
+ 
++if(LLD_BUILD_ONLY_ELF)
++  set(LLD_DRIVER_LIBS lldELF)
++else()
++  set(LLD_DRIVER_LIBS
++    lldCOFF
++    lldELF
++    lldMachO
++    lldMinGW
++    lldWasm
++    )
++endif()
++
+ lld_target_link_libraries(lld
+   PRIVATE
+   lldCommon
+-  lldCOFF
+-  lldELF
+-  lldMachO
+-  lldMinGW
+-  lldWasm
++  ${LLD_DRIVER_LIBS}
+   )
+ 
+-if(NOT LLD_SYMLINKS_TO_CREATE)
++if(LLD_BUILD_ONLY_ELF)
++  set(LLD_SYMLINKS_TO_CREATE ld.lld)
++elseif(NOT LLD_SYMLINKS_TO_CREATE)
+   set(LLD_SYMLINKS_TO_CREATE
+       lld-link ld.lld ld64.lld wasm-ld)
+ endif()
+ 
++if(LLD_BUILD_ONLY_ELF AND LLVM_TOOL_LLVM_DRIVER_BUILD)
++  set_property(GLOBAL PROPERTY LLVM_DRIVER_TOOL_ALIASES_lld "")
++endif()
++
+ foreach(link ${LLD_SYMLINKS_TO_CREATE})
+   add_lld_symlink(${link} lld)
+ endforeach()
+diff --git a/lld/tools/lld/lld.cpp b/lld/tools/lld/lld.cpp
+index d6800fa1eea4..adf3291d19e1 100644
+--- a/lld/tools/lld/lld.cpp
++++ b/lld/tools/lld/lld.cpp
+@@ -66,11 +66,19 @@ static unsigned inTestVerbosity() {
+   return v;
+ }
+ 
++#if defined(LLD_BUILD_ONLY_ELF)
++LLD_HAS_DRIVER(elf)
++static constexpr lld::DriverDef lldDrivers[] = {
++    {lld::Gnu, &lld::elf::link},
++};
++#else
+ LLD_HAS_DRIVER(coff)
+ LLD_HAS_DRIVER(elf)
+ LLD_HAS_DRIVER(mingw)
+ LLD_HAS_DRIVER(macho)
+ LLD_HAS_DRIVER(wasm)
++static constexpr lld::DriverDef lldDrivers[] = LLD_ALL_DRIVERS;
++#endif
+ 
+ int lld_main(int argc, char **argv, const llvm::ToolContext &) {
+   sys::Process::UseANSIEscapeCodes(true);
+@@ -87,7 +95,7 @@ int lld_main(int argc, char **argv, const llvm::ToolContext &) {
+   // exception handling and no memory cleanup on exit.
+   if (!inTestVerbosity()) {
+     int r =
+-        lld::unsafeLldMain(args, llvm::outs(), llvm::errs(), LLD_ALL_DRIVERS,
++        lld::unsafeLldMain(args, llvm::outs(), llvm::errs(), lldDrivers,
+                            /*exitEarly=*/true);
+     return r;
+   }
+@@ -100,7 +108,7 @@ int lld_main(int argc, char **argv, const llvm::ToolContext &) {
+     inTestOutputDisabled = (i != 1);
+ 
+     // Execute one iteration.
+-    auto r = lldMain(args, llvm::outs(), llvm::errs(), LLD_ALL_DRIVERS);
++    auto r = lldMain(args, llvm::outs(), llvm::errs(), lldDrivers);
+     if (!r.canRunAgain)
+       exitLld(r.retCode); // Exit now, can't re-execute again.
+ 
+diff --git a/llvm/cmake/config-ix.cmake b/llvm/cmake/config-ix.cmake
+index 415b09e29807..4d0f5dbfb6b0 100644
+--- a/llvm/cmake/config-ix.cmake
++++ b/llvm/cmake/config-ix.cmake
+@@ -402,6 +402,7 @@ check_symbol_exists(malloc_zone_statistics malloc/malloc.h
+ check_symbol_exists(posix_spawn spawn.h HAVE_POSIX_SPAWN)
+ check_symbol_exists(pread unistd.h HAVE_PREAD)
+ check_symbol_exists(sbrk unistd.h HAVE_SBRK)
++check_symbol_exists(setjmp setjmp.h HAVE_SETJMP)
+ check_symbol_exists(strerror_r string.h HAVE_STRERROR_R)
+ check_symbol_exists(strerror_s string.h HAVE_DECL_STRERROR_S)
+ check_symbol_exists(setenv stdlib.h HAVE_SETENV)
+diff --git a/llvm/cmake/modules/HandleLLVMOptions.cmake b/llvm/cmake/modules/HandleLLVMOptions.cmake
+index 75bd8ed11e1b..75ad4e75158b 100644
+--- a/llvm/cmake/modules/HandleLLVMOptions.cmake
++++ b/llvm/cmake/modules/HandleLLVMOptions.cmake
+@@ -252,6 +252,10 @@ elseif(FUCHSIA OR UNIX OR CYGWIN)
+   else()
+     set(LLVM_HAVE_LINK_VERSION_SCRIPT 1)
+   endif()
++elseif(WASI)
++  set(LLVM_ON_WIN32 0)
++  set(LLVM_ON_UNIX 1)
++  set(LLVM_HAVE_LINK_VERSION_SCRIPT 0)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+   set(LLVM_ON_UNIX 0)
+   set(LLVM_HAVE_LINK_VERSION_SCRIPT 0)
+diff --git a/llvm/include/llvm/ADT/bit.h b/llvm/include/llvm/ADT/bit.h
+index 3ac23d6d48cc..0cfb092b88e7 100644
+--- a/llvm/include/llvm/ADT/bit.h
++++ b/llvm/include/llvm/ADT/bit.h
+@@ -30,7 +30,8 @@
+ 
+ #if defined(__linux__) || defined(__GNU__) || defined(__HAIKU__) ||            \
+     defined(__Fuchsia__) || defined(__EMSCRIPTEN__) || defined(__NetBSD__) ||  \
+-    defined(__OpenBSD__) || defined(__DragonFly__) || defined(__managarm__)
++    defined(__OpenBSD__) || defined(__DragonFly__) || defined(__managarm__) || \
++    defined(__wasm__)
+ #include <endian.h>
+ #elif defined(_AIX)
+ #include <sys/machine.h>
+diff --git a/llvm/include/llvm/Config/config.h.cmake b/llvm/include/llvm/Config/config.h.cmake
+index 94fde52de11b..46b838d8bc31 100644
+--- a/llvm/include/llvm/Config/config.h.cmake
++++ b/llvm/include/llvm/Config/config.h.cmake
+@@ -149,6 +149,10 @@
+ /* Define to 1 if you have the `sbrk' function. */
+ #cmakedefine HAVE_SBRK ${HAVE_SBRK}
+ 
++/* Define to 1 if you have the `setjmp' function. */
++/* This function is expected to be present everywhere except for a subset of WebAssembly builds. */
++#cmakedefine HAVE_SETJMP ${HAVE_SETJMP}
++
+ /* Define to 1 if you have the `setenv' function. */
+ #cmakedefine HAVE_SETENV ${HAVE_SETENV}
+ 
+diff --git a/llvm/include/llvm/Support/Compiler.h b/llvm/include/llvm/Support/Compiler.h
+index f4bd89402109..ddc2a22d44ca 100644
+--- a/llvm/include/llvm/Support/Compiler.h
++++ b/llvm/include/llvm/Support/Compiler.h
+@@ -201,7 +201,7 @@
+ #define LLVM_TEMPLATE_ABI LLVM_ABI
+ #define LLVM_EXPORT_TEMPLATE
+ #define LLVM_ABI_EXPORT LLVM_ABI
+-#elif defined(__MACH__) || defined(__WASM__) || defined(__EMSCRIPTEN__)
++#elif defined(__MACH__) || defined(__wasm__) || defined(__EMSCRIPTEN__)
+ #define LLVM_ABI __attribute__((visibility("default")))
+ #define LLVM_TEMPLATE_ABI
+ #define LLVM_EXPORT_TEMPLATE
+diff --git a/llvm/lib/ExecutionEngine/Interpreter/ExternalFunctions.cpp b/llvm/lib/ExecutionEngine/Interpreter/ExternalFunctions.cpp
+index 9fe74898170a..5c8b94e445cb 100644
+--- a/llvm/lib/ExecutionEngine/Interpreter/ExternalFunctions.cpp
++++ b/llvm/lib/ExecutionEngine/Interpreter/ExternalFunctions.cpp
+@@ -34,7 +34,9 @@
+ #include "llvm/Support/raw_ostream.h"
+ #include <cassert>
+ #include <cmath>
++#if !defined(__wasi__)
+ #include <csignal>
++#endif
+ #include <cstdint>
+ #include <cstdio>
+ #include <cstring>
+@@ -339,7 +341,11 @@ static GenericValue lle_X_exit(FunctionType *FT, ArrayRef<GenericValue> Args) {
+ static GenericValue lle_X_abort(FunctionType *FT, ArrayRef<GenericValue> Args) {
+   //FIXME: should we report or raise here?
+   //report_fatal_error("Interpreted program raised SIGABRT");
++#if defined(__wasi__)
++  abort();
++#else
+   raise (SIGABRT);
++#endif
+   return GenericValue();
+ }
+ 
+diff --git a/llvm/lib/Support/CrashRecoveryContext.cpp b/llvm/lib/Support/CrashRecoveryContext.cpp
+index fb9f2ec333a7..9939cc50cd59 100644
+--- a/llvm/lib/Support/CrashRecoveryContext.cpp
++++ b/llvm/lib/Support/CrashRecoveryContext.cpp
+@@ -13,8 +13,15 @@
+ #include "llvm/Support/Signals.h"
+ #include "llvm/Support/thread.h"
+ #include <cassert>
++#if !defined(__wasi__)
++#include <csignal>
++#endif
+ #include <mutex>
++#if HAVE_SETJMP
++// We can rely on setjmp to exist everywhere except for a subset of WebAssembly
++// builds.
+ #include <setjmp.h>
++#endif
+ 
+ using namespace llvm;
+ 
+@@ -31,7 +38,9 @@ struct CrashRecoveryContextImpl {
+   const CrashRecoveryContextImpl *Next;
+ 
+   CrashRecoveryContext *CRC;
++#ifdef HAVE_SETJMP
+   ::jmp_buf JumpBuffer;
++#endif
+   volatile unsigned Failed : 1;
+   unsigned SwitchedThread : 1;
+   unsigned ValidJumpBuffer : 1;
+@@ -50,9 +59,7 @@ public:
+   /// Called when the separate crash-recovery thread was finished, to
+   /// indicate that we don't need to clear the thread-local CurrentContext.
+   void setSwitchedThread() {
+-#if defined(LLVM_ENABLE_THREADS) && LLVM_ENABLE_THREADS != 0
+     SwitchedThread = true;
+-#endif
+   }
+ 
+   // If the function ran by the CrashRecoveryContext crashes or fails, then
+@@ -72,9 +79,11 @@ public:
+ 
+     CRC->RetCode = RetCode;
+ 
++#if HAVE_SETJMP
+     // Jump back to the RunSafely we were called under.
+     if (ValidJumpBuffer)
+       longjmp(JumpBuffer, 1);
++#endif
+ 
+     // Otherwise let the caller decide of the outcome of the crash. Currently
+     // this occurs when using SEH on Windows with MSVC or clang-cl.
+@@ -332,7 +341,17 @@ static void uninstallExceptionOrSignalHandlers() {
+   }
+ }
+ 
+-#else // !_WIN32
++#elif defined(__wasi__)
++
++// WASI implementation.
++//
++// WASI traps are always fatal, and recovery is not possible. Do nothing.
++
++static void
++installExceptionOrSignalHandlers(bool NeedsPOSIXUtilitySignalHandling) {}
++static void uninstallExceptionOrSignalHandlers() {}
++
++#else // !_WIN32 && !__wasi__
+ 
+ // Generic POSIX implementation.
+ //
+@@ -428,10 +447,12 @@ bool CrashRecoveryContext::RunSafely(function_ref<void()> Fn) {
+     CrashRecoveryContextImpl *CRCI = new CrashRecoveryContextImpl(this);
+     Impl = CRCI;
+ 
++#if HAVE_SETJMP
+     CRCI->ValidJumpBuffer = true;
+     if (setjmp(CRCI->JumpBuffer) != 0) {
+       return false;
+     }
++#endif
+   }
+ 
+   Fn();
+@@ -478,7 +499,9 @@ bool CrashRecoveryContext::isCrash(int RetCode) {
+ bool CrashRecoveryContext::throwIfCrash(int RetCode) {
+   if (!isCrash(RetCode))
+     return false;
+-#if defined(_WIN32)
++#if defined(__wasi__)
++  abort();
++#elif defined(_WIN32)
+   ::RaiseException(RetCode, 0, 0, NULL);
+ #else
+   llvm::sys::unregisterHandlers();
+diff --git a/llvm/lib/Support/InitLLVM.cpp b/llvm/lib/Support/InitLLVM.cpp
+index 797c5d35bec3..991561f3edf9 100644
+--- a/llvm/lib/Support/InitLLVM.cpp
++++ b/llvm/lib/Support/InitLLVM.cpp
+@@ -89,6 +89,7 @@ InitLLVM::InitLLVM(int &Argc, const char **&Argv,
+                         NeedsPOSIXUtilitySignalHandling);
+ #endif
+ 
++#if !defined(__wasi__)
+   if (InstallPipeSignalExitHandler)
+     // The pipe signal handler must be installed before any other handlers are
+     // registered. This is because the Unix \ref RegisterHandlers function does
+@@ -102,6 +103,7 @@ InitLLVM::InitLLVM(int &Argc, const char **&Argv,
+   sys::PrintStackTraceOnErrorSignal(Argv[0]);
+   install_out_of_memory_new_handler();
+   RaiseLimits();
++#endif
+ 
+ #ifdef __MVS__
+ 
+diff --git a/llvm/lib/Support/Jobserver.cpp b/llvm/lib/Support/Jobserver.cpp
+index 522ab914f7ee..ad3df02bb2a3 100644
+--- a/llvm/lib/Support/Jobserver.cpp
++++ b/llvm/lib/Support/Jobserver.cpp
+@@ -166,7 +166,7 @@ private:
+ } // namespace llvm
+ 
+ // Include the platform-specific parts of the class.
+-#if defined(LLVM_ON_UNIX)
++#if defined(LLVM_ON_UNIX) && !defined(__wasi__)
+ #include "Unix/Jobserver.inc"
+ #elif defined(_WIN32)
+ #include "Windows/Jobserver.inc"
+@@ -176,6 +176,7 @@ JobserverClientImpl::JobserverClientImpl(const JobserverConfig &Config) {}
+ JobserverClientImpl::~JobserverClientImpl() = default;
+ JobSlot JobserverClientImpl::tryAcquire() { return JobSlot(); }
+ void JobserverClientImpl::release(JobSlot Slot) {}
++bool areFdsValid(int ReadFD, int WriteFD) { return false; }
+ #endif
+ 
+ namespace llvm {
+diff --git a/llvm/lib/Support/LockFileManager.cpp b/llvm/lib/Support/LockFileManager.cpp
+index 564cfc5b21aa..959ae37751e1 100644
+--- a/llvm/lib/Support/LockFileManager.cpp
++++ b/llvm/lib/Support/LockFileManager.cpp
+@@ -96,7 +96,7 @@ static std::error_code getHostID(SmallVectorImpl<char> &HostID) {
+   StringRef UUIDRef(UUIDStr);
+   HostID.append(UUIDRef.begin(), UUIDRef.end());
+ 
+-#elif LLVM_ON_UNIX
++#elif !defined(__wasi__)
+   char HostName[256];
+   HostName[255] = 0;
+   HostName[0] = 0;
+@@ -113,7 +113,7 @@ static std::error_code getHostID(SmallVectorImpl<char> &HostID) {
+ }
+ 
+ bool LockFileManager::processStillExecuting(StringRef HostID, int PID) {
+-#if LLVM_ON_UNIX && !defined(__ANDROID__)
++#if LLVM_ON_UNIX && !defined(__ANDROID__) && !defined(__wasi__)
+   SmallString<256> StoredHostID;
+   if (getHostID(StoredHostID))
+     return true; // Conservatively assume it's executing on error.
+diff --git a/llvm/lib/Support/ProgramStack.cpp b/llvm/lib/Support/ProgramStack.cpp
+index 1f234ab5875a..a3a3c0dde80d 100644
+--- a/llvm/lib/Support/ProgramStack.cpp
++++ b/llvm/lib/Support/ProgramStack.cpp
+@@ -10,7 +10,7 @@
+ #include "llvm/Config/config.h"
+ #include "llvm/Support/Compiler.h"
+ 
+-#ifdef LLVM_ON_UNIX
++#if defined(LLVM_ON_UNIX) && !defined(__wasi__)
+ # include <sys/resource.h> // for getrlimit
+ #endif
+ 
+@@ -42,7 +42,7 @@ uintptr_t llvm::getStackPointer() {
+ }
+ 
+ unsigned llvm::getDefaultStackSize() {
+-#ifdef LLVM_ON_UNIX
++#if defined(LLVM_ON_UNIX) && !defined(__wasi__)
+   rlimit RL;
+   getrlimit(RLIMIT_STACK, &RL);
+   return RL.rlim_cur;
+diff --git a/llvm/lib/Support/Signals.cpp b/llvm/lib/Support/Signals.cpp
+index 8b839c78e3b3..30958ac30c65 100644
+--- a/llvm/lib/Support/Signals.cpp
++++ b/llvm/lib/Support/Signals.cpp
+@@ -357,9 +357,26 @@ static bool printMarkupStackTrace(StringRef Argv0, void **StackTrace, int Depth,
+ }
+ 
+ // Include the platform-specific parts of this class.
+-#ifdef LLVM_ON_UNIX
++#if defined(__wasi__)
++// WASI does not have signals.
++static bool findModulesAndOffsets(void **, int, const char **, intptr_t *,
++                                  const char *, StringSaver &) {
++  return false;
++}
++static bool printMarkupContext(raw_ostream &, const char *) { return false; }
++
++void llvm::sys::AddSignalHandler(sys::SignalHandlerCallback FnPtr,
++                                 void *Cookie,
++                                 bool NeedsPOSIXUtilitySignalHandling) {}
++void llvm::sys::RunInterruptHandlers() {}
++void sys::CleanupOnSignal(uintptr_t Context) {}
++bool llvm::sys::RemoveFileOnSignal(StringRef Filename, std::string *ErrMsg) {
++  return false;
++}
++void llvm::sys::DontRemoveFileOnSignal(StringRef Filename) {}
++void llvm::sys::DisableSystemDialogsOnCrash() {}
++#elif defined(LLVM_ON_UNIX)
+ #include "Unix/Signals.inc"
+-#endif
+-#ifdef _WIN32
++#elif defined(_WIN32)
+ #include "Windows/Signals.inc"
+ #endif
+diff --git a/llvm/lib/Support/Unix/Memory.inc b/llvm/lib/Support/Unix/Memory.inc
+index bac208a7d543..2fa9db84c977 100644
+--- a/llvm/lib/Support/Unix/Memory.inc
++++ b/llvm/lib/Support/Unix/Memory.inc
+@@ -163,6 +163,11 @@ std::error_code Memory::releaseMappedMemory(MemoryBlock &M) {
+ 
+ std::error_code Memory::protectMappedMemory(const MemoryBlock &M,
+                                             unsigned Flags) {
++#if defined(__wasi__)
++  // Wasm does not allow making memory read-only or executable.
++  return std::error_code(ENOSYS, std::generic_category());
++#endif
++
+   static const Align PageSize = Align(Process::getPageSizeEstimate());
+   if (M.Address == nullptr || M.AllocatedSize == 0)
+     return std::error_code();
+diff --git a/llvm/lib/Support/Unix/Path.inc b/llvm/lib/Support/Unix/Path.inc
+index 98c210a5d31f..e847f8be29c0 100644
+--- a/llvm/lib/Support/Unix/Path.inc
++++ b/llvm/lib/Support/Unix/Path.inc
+@@ -31,7 +31,9 @@
+ #endif
+ 
+ #include <dirent.h>
++#if !defined(__wasi__)
+ #include <pwd.h>
++#endif
+ 
+ #ifdef __APPLE__
+ #include <copyfile.h>
+@@ -130,7 +132,7 @@ const file_t kInvalidFile = -1;
+     defined(__CYGWIN__) || defined(__DragonFly__) || defined(_AIX) ||          \
+     defined(__GNU__) ||                                                        \
+     (defined(__sun__) && defined(__svr4__) || defined(__HAIKU__)) ||           \
+-    defined(__managarm__)
++    defined(__managarm__) || defined(__wasi__)
+ static int test_dir(char ret[PATH_MAX], const char *dir, const char *bin) {
+   struct stat sb;
+   char fullpath[PATH_MAX];
+@@ -287,7 +289,7 @@ std::string getMainExecutable(const char *argv0, void *MainAddr) {
+   // Fall back to the classical detection.
+   if (getprogpath(exe_path, argv0))
+     return exe_path;
+-#elif defined(__OpenBSD__) || defined(__HAIKU__)
++#elif defined(__OpenBSD__) || defined(__HAIKU__) || defined(__wasi__)
+   char exe_path[PATH_MAX];
+   // argv[0] only
+   if (getprogpath(exe_path, argv0) != NULL)
+@@ -522,6 +524,9 @@ static bool is_local_impl(struct STATVFS &Vfs) {
+ #elif defined(__EMSCRIPTEN__)
+   // Emscripten doesn't currently support remote filesystem mounts.
+   return true;
++#elif defined(__wasi__)
++  // WASI doesn't currently support remote filesystem mounts.
++  return true;
+ #elif defined(__HAIKU__)
+   // Haiku doesn't expose this information.
+   return false;
+@@ -702,6 +707,11 @@ static void expandTildeExpr(SmallVectorImpl<char> &Path) {
+     return;
+   }
+ 
++#if defined(__wasi__)
++  // No access to password database, return back the original path.
++  (void)Remainder;
++  return;
++#else
+   // This is a string of the form ~username/, look up this user's entry in the
+   // password database.
+   std::unique_ptr<char[]> Buf;
+@@ -723,6 +733,7 @@ static void expandTildeExpr(SmallVectorImpl<char> &Path) {
+   Path.clear();
+   Path.append(Entry->pw_dir, Entry->pw_dir + strlen(Entry->pw_dir));
+   llvm::sys::path::append(Path, Storage);
++#endif
+ }
+ 
+ void expand_tilde(const Twine &path, SmallVectorImpl<char> &dest) {
+@@ -803,11 +814,15 @@ std::error_code status(int FD, file_status &Result) {
+ }
+ 
+ unsigned getUmask() {
++#if defined(__wasi__)
++  return 0022;
++#else
+   // Chose arbitary new mask and reset the umask to the old mask.
+   // umask(2) never fails so ignore the return of the second call.
+   unsigned Mask = ::umask(0);
+   (void)::umask(Mask);
+   return Mask;
++#endif
+ }
+ 
+ std::error_code setPermissions(const Twine &Path, perms Permissions) {
+@@ -922,7 +937,7 @@ void mapped_file_region::dontNeedImpl() {
+   assert(Mode == mapped_file_region::readonly);
+   if (!Mapping)
+     return;
+-#if defined(__MVS__) || defined(_AIX)
++#if defined(__MVS__) || defined(_AIX) || defined(__wasi__)
+     // If we don't have madvise, or it isn't beneficial, treat this as a no-op.
+ #elif defined(POSIX_MADV_DONTNEED)
+   ::posix_madvise(Mapping, Size, POSIX_MADV_DONTNEED);
+@@ -935,7 +950,7 @@ void mapped_file_region::willNeedImpl() {
+   assert(Mode == mapped_file_region::readonly);
+   if (!Mapping)
+     return;
+-#if defined(__MVS__) || defined(_AIX)
++#if defined(__MVS__) || defined(_AIX) || defined(__wasi__)
+   // If we don't have madvise, or it isn't beneficial, treat this as a no-op.
+ #elif defined(POSIX_MADV_WILLNEED)
+   ::posix_madvise(Mapping, Size, POSIX_MADV_WILLNEED);
+@@ -948,7 +963,7 @@ void mapped_file_region::randomAccessImpl() {
+   assert(Mode == mapped_file_region::readonly);
+   if (!Mapping)
+     return;
+-#if defined(__MVS__) || defined(_AIX)
++#if defined(__MVS__) || defined(_AIX) || defined(__wasi__)
+   // If we don't have madvise, or it isn't beneficial, treat this as a no-op.
+ #elif defined(POSIX_MADV_RANDOM)
+   ::posix_madvise(Mapping, Size, POSIX_MADV_RANDOM);
+@@ -1311,6 +1326,9 @@ Expected<size_t> readNativeFileSlice(file_t FD, MutableArrayRef<char> Buf,
+ 
+ std::error_code tryLockFile(int FD, std::chrono::milliseconds Timeout,
+                             LockKind Kind) {
++#if defined(__wasi__)
++  return std::error_code(ENOSYS, std::generic_category());
++#else
+   auto Start = std::chrono::steady_clock::now();
+   auto End = Start + Timeout;
+   do {
+@@ -1337,9 +1355,13 @@ std::error_code tryLockFile(int FD, std::chrono::milliseconds Timeout,
+     usleep(1000);
+   } while (std::chrono::steady_clock::now() < End);
+   return make_error_code(errc::no_lock_available);
++#endif
+ }
+ 
+ std::error_code lockFile(int FD, LockKind Kind) {
++#if defined(__wasi__)
++  return std::error_code(ENOSYS, std::generic_category());
++#else
+   struct flock Lock;
+   memset(&Lock, 0, sizeof(Lock));
+   switch (Kind) {
+@@ -1356,9 +1378,13 @@ std::error_code lockFile(int FD, LockKind Kind) {
+   if (sys::RetryAfterSignal(-1, ::fcntl, FD, F_SETLKW, &Lock) != -1)
+     return std::error_code();
+   return errnoAsErrorCode();
++#endif
+ }
+ 
+ std::error_code unlockFile(int FD) {
++#if defined(__wasi__)
++  return std::error_code(ENOSYS, std::generic_category());
++#else
+   struct flock Lock;
+   Lock.l_type = F_UNLCK;
+   Lock.l_whence = SEEK_SET;
+@@ -1367,6 +1393,7 @@ std::error_code unlockFile(int FD) {
+   if (sys::RetryAfterSignal(-1, ::fcntl, FD, F_SETLK, &Lock) != -1)
+     return std::error_code();
+   return errnoAsErrorCode();
++#endif
+ }
+ 
+ std::error_code closeFile(file_t &F) {
+@@ -1472,11 +1499,15 @@ std::error_code readlink(const Twine &path, SmallVectorImpl<char> &dest) {
+ }
+ 
+ std::error_code changeFileOwnership(int FD, uint32_t Owner, uint32_t Group) {
++#if defined(__wasi__)
++  return std::error_code(ENOTSUP, std::generic_category());
++#else
+   auto FChown = [&]() { return ::fchown(FD, Owner, Group); };
+   // Retry if fchown call fails due to interruption.
+   if ((sys::RetryAfterSignal(-1, FChown)) < 0)
+     return errnoAsErrorCode();
+   return std::error_code();
++#endif
+ }
+ 
+ } // end namespace fs
+@@ -1486,6 +1517,7 @@ namespace path {
+ bool home_directory(SmallVectorImpl<char> &result) {
+   std::unique_ptr<char[]> Buf;
+   char *RequestedDir = getenv("HOME");
++#if !defined(__wasi__)
+   if (!RequestedDir) {
+     long BufSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+     if (BufSize <= 0)
+@@ -1497,6 +1529,7 @@ bool home_directory(SmallVectorImpl<char> &result) {
+     if (pw && pw->pw_dir)
+       RequestedDir = pw->pw_dir;
+   }
++#endif
+   if (!RequestedDir)
+     return false;
+ 
+diff --git a/llvm/lib/Support/Unix/Process.inc b/llvm/lib/Support/Unix/Process.inc
+index 1c0a29787b9f..e23625f989cd 100644
+--- a/llvm/lib/Support/Unix/Process.inc
++++ b/llvm/lib/Support/Unix/Process.inc
+@@ -19,9 +19,11 @@
+ #include <optional>
+ #include <fcntl.h>
+ #include <sys/time.h>
++#if !defined(__wasi__)
+ #include <sys/resource.h>
+-#include <sys/stat.h>
+ #include <signal.h>
++#endif
++#include <sys/stat.h>
+ #if defined(HAVE_MALLINFO) || defined(HAVE_MALLINFO2)
+ #include <malloc.h>
+ #endif
+@@ -53,7 +55,8 @@ getRUsageTimes() {
+   ::getrusage(RUSAGE_SELF, &RU);
+   return {toDuration(RU.ru_utime), toDuration(RU.ru_stime)};
+ #else
+-#ifndef __MVS__ // Exclude for MVS in case -pedantic is used
++#if !(defined(__MVS__) ||                                                      \
++      defined(__wasi__)) // Exclude in case -pedantic is used
+ #warning Cannot get usage times on this platform
+ #endif
+   return {std::chrono::microseconds::zero(), std::chrono::microseconds::zero()};
+@@ -63,7 +66,11 @@ getRUsageTimes() {
+ Process::Pid Process::getProcessId() {
+   static_assert(sizeof(Pid) >= sizeof(pid_t),
+                 "Process::Pid should be big enough to store pid_t");
++#if defined(__wasi__)
++  return Pid(0);
++#else
+   return Pid(::getpid());
++#endif
+ }
+ 
+ // On Cygwin, getpagesize() returns 64k(AllocationGranularity) and
+@@ -136,6 +143,7 @@ void Process::GetTimeUsage(TimePoint<> &elapsed,
+ // their operation. To prevent the disk from filling up, this function does
+ // what's necessary to prevent their generation.
+ void Process::PreventCoreFiles() {
++#ifndef __wasi__
+   struct rlimit rlim;
+   getrlimit(RLIMIT_CORE, &rlim);
+ #ifdef __linux__
+@@ -158,6 +166,7 @@ void Process::PreventCoreFiles() {
+   rlim.rlim_cur = 0;
+ #endif
+   setrlimit(RLIMIT_CORE, &rlim);
++#endif
+ 
+ #if defined(HAVE_MACH_MACH_H) && !defined(__GNU__)
+   // Disable crash reporting on Mac OS X 10.0-10.4
+@@ -245,13 +254,21 @@ std::error_code Process::FixupStandardFileDescriptors() {
+ 
+     if (NullFD == StandardFD)
+       FDC.keepOpen();
++#if defined(__wasi__)
++    else // WASI does not have `dup2` by design. Return EBADF.
++#else
+     else if (dup2(NullFD, StandardFD) < 0)
++#endif
+       return errnoAsErrorCode();
+   }
+   return std::error_code();
+ }
+ 
+ std::error_code Process::SafelyCloseFileDescriptor(int FD) {
++#if defined(__wasi__)
++  ::close(FD);
++  return errnoAsErrorCode();
++#else
+   // Create a signal set filled with *all* signals.
+   sigset_t FullSet, SavedSet;
+   if (sigfillset(&FullSet) < 0 || sigfillset(&SavedSet) < 0)
+@@ -284,6 +301,7 @@ std::error_code Process::SafelyCloseFileDescriptor(int FD) {
+   if (ErrnoFromClose)
+     return std::error_code(ErrnoFromClose, std::generic_category());
+   return std::error_code(EC, std::generic_category());
++#endif
+ }
+ 
+ bool Process::StandardInIsUserInput() {
+@@ -320,7 +338,7 @@ static unsigned getColumns(int FileID) {
+   // instead if it isn't available.
+   unsigned Columns = 0;
+ 
+-#if defined(HAVE_SYS_IOCTL_H) && !defined(__sun__)
++#if defined(HAVE_SYS_IOCTL_H) && !defined(__sun__) && !defined(__wasi__)
+   struct winsize ws;
+   if (ioctl(FileID, TIOCGWINSZ, &ws) == 0)
+     Columns = ws.ws_col;
+diff --git a/llvm/lib/Support/Unix/Program.inc b/llvm/lib/Support/Unix/Program.inc
+index 489ca03b3067..6dc4fb6de724 100644
+--- a/llvm/lib/Support/Unix/Program.inc
++++ b/llvm/lib/Support/Unix/Program.inc
+@@ -27,9 +27,11 @@
+ #include "llvm/Support/Path.h"
+ #include "llvm/Support/StringSaver.h"
+ #include "llvm/Support/raw_ostream.h"
+-#include <fcntl.h>
+-#include <signal.h>
++#if !defined(__wasi__)
+ #include <sys/resource.h>
++#include <signal.h>
++#endif
++#include <fcntl.h>
+ #include <sys/stat.h>
+ #if HAVE_UNISTD_H
+ #include <unistd.h>
+@@ -62,6 +64,7 @@ ProcessInfo::ProcessInfo() : Pid(0), ReturnCode(0) {}
+ ErrorOr<std::string> sys::findProgramByName(StringRef Name,
+                                             ArrayRef<StringRef> Paths) {
+   assert(!Name.empty() && "Must have a name!");
++#if !defined(__wasi__)
+   // Use the given path verbatim if it contains any slashes; this matches
+   // the behavior of sh(1) and friends.
+   if (Name.contains('/'))
+@@ -84,12 +87,14 @@ ErrorOr<std::string> sys::findProgramByName(StringRef Name,
+     if (sys::fs::can_execute(FilePath.c_str()))
+       return std::string(FilePath); // Found the executable!
+   }
++#endif
+   return errc::no_such_file_or_directory;
+ }
+ 
+ static bool RedirectIO(std::optional<StringRef> Path, int FD, std::string *ErrMsg) {
+   if (!Path) // Noop
+     return false;
++#if !defined(__wasi__)
+   std::string File;
+   if (Path->empty())
+     // Redirect empty paths to /dev/null
+@@ -112,6 +117,7 @@ static bool RedirectIO(std::optional<StringRef> Path, int FD, std::string *ErrMs
+     return true;
+   }
+   close(InFD); // Close the original FD
++#endif
+   return false;
+ }
+ 
+@@ -137,6 +143,7 @@ static bool RedirectIO_PS(const std::string *Path, int FD, std::string *ErrMsg,
+ static void TimeOutHandler(int Sig) {}
+ 
+ static void SetMemoryLimits(unsigned size) {
++#ifndef __wasi__
+   struct rlimit r;
+   __typeof__(r.rlim_cur) limit = (__typeof__(r.rlim_cur))(size)*1048576;
+ 
+@@ -150,6 +157,7 @@ static void SetMemoryLimits(unsigned size) {
+   r.rlim_cur = limit;
+   setrlimit(RLIMIT_RSS, &r);
+ #endif
++#endif
+ }
+ 
+ static std::vector<const char *>
+@@ -167,6 +175,12 @@ static bool Execute(ProcessInfo &PI, StringRef Program,
+                     ArrayRef<std::optional<StringRef>> Redirects,
+                     unsigned MemoryLimit, std::string *ErrMsg,
+                     BitVector *AffinityMask, bool DetachProcess) {
++#if defined(__wasi__)
++  if (ErrMsg)
++    *ErrMsg = std::string("WASI does not support spawning subprocesses");
++  return false;
++#else
++
+   assert(!AffinityMask && "Starting a process with an affinity mask is "
+                           "currently not supported on Unix!");
+ 
+@@ -329,6 +343,7 @@ static bool Execute(ProcessInfo &PI, StringRef Program,
+   PI.Process = child;
+ 
+   return true;
++#endif
+ }
+ 
+ namespace llvm {
+@@ -336,7 +351,7 @@ namespace sys {
+ 
+ #if defined(_AIX)
+ static pid_t(wait4)(pid_t pid, int *status, int options, struct rusage *usage);
+-#elif !defined(__Fuchsia__)
++#elif !defined(__Fuchsia__) && !defined(__wasi__)
+ using ::wait4;
+ #endif
+ 
+@@ -382,6 +397,17 @@ ProcessInfo llvm::sys::Wait(const ProcessInfo &PI,
+                             std::string *ErrMsg,
+                             std::optional<ProcessStatistics> *ProcStat,
+                             bool Polling) {
++#if defined(__wasi__)
++  if (ErrMsg)
++    *ErrMsg = "WASI does not support waiting for subprocesses";
++  if (ProcStat)
++    ProcStat->reset();
++
++  ProcessInfo WaitResult;
++  WaitResult.Process = ProcessInfo::InvalidPid;
++  WaitResult.ReturnCode = -1;
++  return WaitResult;
++#else
+   struct sigaction Act, Old;
+   assert(PI.Pid && "invalid pid to wait on, process not started?");
+ 
+@@ -499,6 +525,7 @@ ProcessInfo llvm::sys::Wait(const ProcessInfo &PI,
+     WaitResult.ReturnCode = -2;
+   }
+   return WaitResult;
++#endif
+ }
+ 
+ std::error_code llvm::sys::ChangeStdinMode(fs::OpenFlags Flags) {
+diff --git a/llvm/lib/Support/Unix/Unix.h b/llvm/lib/Support/Unix/Unix.h
+index f24d524982b2..d83d8edb151f 100644
+--- a/llvm/lib/Support/Unix/Unix.h
++++ b/llvm/lib/Support/Unix/Unix.h
+@@ -29,7 +29,10 @@
+ #include <cstring>
+ #include <string>
+ #include <sys/types.h>
++
++#if !defined(__wasi__)
+ #include <sys/wait.h>
++#endif
+ 
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+diff --git a/llvm/lib/Support/Unix/Watchdog.inc b/llvm/lib/Support/Unix/Watchdog.inc
+index b33e52d88500..415a23ee0977 100644
+--- a/llvm/lib/Support/Unix/Watchdog.inc
++++ b/llvm/lib/Support/Unix/Watchdog.inc
+@@ -19,13 +19,13 @@
+ namespace llvm {
+ namespace sys {
+ Watchdog::Watchdog(unsigned int seconds) {
+-#ifdef HAVE_UNISTD_H
++#if HAVE_UNISTD_H && !defined(__wasi__)
+   alarm(seconds);
+ #endif
+ }
+ 
+ Watchdog::~Watchdog() {
+-#ifdef HAVE_UNISTD_H
++#if HAVE_UNISTD_H && !defined(__wasi__)
+   alarm(0);
+ #endif
+ }
+diff --git a/llvm/lib/Support/raw_socket_stream.cpp b/llvm/lib/Support/raw_socket_stream.cpp
+index cdf793c8958f..09b10660b130 100644
+--- a/llvm/lib/Support/raw_socket_stream.cpp
++++ b/llvm/lib/Support/raw_socket_stream.cpp
+@@ -41,6 +41,8 @@
+ 
+ using namespace llvm;
+ 
++#ifndef __wasi__
++
+ #ifdef _WIN32
+ WSABalancer::WSABalancer() {
+   WSADATA WsaData;
+@@ -370,3 +372,5 @@ ssize_t raw_socket_stream::read(char *Ptr, size_t Size,
+   }
+   return raw_fd_stream::read(Ptr, Size);
+ }
++
++#endif
+diff --git a/llvm/lib/Target/Xtensa/MCTargetDesc/XtensaAsmBackend.cpp b/llvm/lib/Target/Xtensa/MCTargetDesc/XtensaAsmBackend.cpp
+index 6cb0830c65d8..eb5adb187543 100644
+--- a/llvm/lib/Target/Xtensa/MCTargetDesc/XtensaAsmBackend.cpp
++++ b/llvm/lib/Target/Xtensa/MCTargetDesc/XtensaAsmBackend.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include "MCTargetDesc/XtensaFixupKinds.h"
+ #include "MCTargetDesc/XtensaMCTargetDesc.h"
++#include "llvm/ADT/StringSwitch.h"
+ #include "llvm/MC/MCAsmBackend.h"
+ #include "llvm/MC/MCAssembler.h"
+ #include "llvm/MC/MCContext.h"
+@@ -33,6 +34,7 @@ public:
+       : MCAsmBackend(llvm::endianness::little), OSABI(osABI),
+         IsLittleEndian(isLE) {}
+ 
++  std::optional<MCFixupKind> getFixupKind(StringRef Name) const override;
+   MCFixupKindInfo getFixupKindInfo(MCFixupKind Kind) const override;
+   std::optional<bool> evaluateFixup(const MCFragment &, MCFixup &, MCValue &,
+                                     uint64_t &) override;
+@@ -47,6 +49,18 @@ public:
+ };
+ } // namespace
+ 
++std::optional<MCFixupKind>
++XtensaAsmBackend::getFixupKind(StringRef Name) const {
++  unsigned Type = llvm::StringSwitch<unsigned>(Name)
++#define ELF_RELOC(NAME, ID) .Case(#NAME, ID)
++#include "llvm/BinaryFormat/ELFRelocs/Xtensa.def"
++#undef ELF_RELOC
++                      .Default(-1u);
++  if (Type == -1u)
++    return std::nullopt;
++  return static_cast<MCFixupKind>(FirstLiteralRelocationKind + Type);
++}
++
+ MCFixupKindInfo XtensaAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
+   const static MCFixupKindInfo Infos[Xtensa::NumTargetFixupKinds] = {
+       // name                     offset bits  flags
+@@ -59,6 +73,10 @@ MCFixupKindInfo XtensaAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
+       {"fixup_xtensa_loop_8", 16, 8, 0},
+   };
+ 
++  // Raw relocation fixups do not use target fixup encoding information.
++  if (mc::isRelocation(Kind))
++    return {};
++
+   if (Kind < FirstTargetFixupKind)
+     return MCAsmBackend::getFixupKindInfo(Kind);
+   assert(unsigned(Kind - FirstTargetFixupKind) < Xtensa::NumTargetFixupKinds &&
+@@ -155,6 +173,9 @@ void XtensaAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
+                                   const MCValue &Target, uint8_t *Data,
+                                   uint64_t Value, bool IsResolved) {
+   maybeAddReloc(F, Fixup, Target, Value, IsResolved);
++  if (mc::isRelocation(Fixup.getKind()))
++    return;
++
+   MCContext &Ctx = getContext();
+   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
+ 
+diff --git a/llvm/test/MC/Xtensa/Relocations/reloc-directive.s b/llvm/test/MC/Xtensa/Relocations/reloc-directive.s
+new file mode 100644
+index 000000000000..51e6f51ba3dc
+--- /dev/null
++++ b/llvm/test/MC/Xtensa/Relocations/reloc-directive.s
+@@ -0,0 +1,11 @@
++# RUN: llvm-mc -filetype=obj -triple=xtensa %s -o - | llvm-readelf -r -x .data - | FileCheck %s
++
++  .data
++.Lreloc:
++  .long 6
++  .reloc .Lreloc, R_XTENSA_32, target
++
++# CHECK:      Relocation section '.rela.data'
++# CHECK:      R_XTENSA_32 {{.*}} target + 0
++# CHECK:      Hex dump of section '.data':
++# CHECK-NEXT: 0x00000000 06000000
+
+diff --git a/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp b/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp
+index 897f92732..aa680afd4 100644
+--- a/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp
++++ b/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp
+@@ -1450,10 +1450,32 @@ SDValue XtensaTargetLowering::LowerImmediate(SDValue Op,
+     // Check if use node maybe lowered to the MOVI instruction
+     if (Value > -2048 && Value <= 2047)
+       return Op;
+-    // Check if use node maybe lowered to the ADDMI instruction
++    // ADDMI remains the best representation for a regular shifted immediate.
++    // A later DAG combine can, however, turn the other ADD operand into a
++    // shift by 1, 2, or 3. That form competes with ADDX2/4/8; if the constant
++    // is kept as an immediate, instruction selection can leave it unselectable
++    // as a bare Constant. Materialize only that shape through the pool.
++    bool HasScaledAddend = false;
++    bool HasAddUser = false;
+     SDNode &OpNode = *Op.getNode();
+-    if ((OpNode.hasOneUse() && OpNode.user_begin()->getOpcode() == ISD::ADD) &&
+-        isShiftedInt<8, 8>(Value))
++    if (OpNode.hasOneUse() &&
++        OpNode.user_begin()->getOpcode() == ISD::ADD) {
++      HasAddUser = true;
++      SDNode *Add = *OpNode.user_begin();
++      for (unsigned I = 0, E = Add->getNumOperands(); I != E; ++I) {
++        SDValue Operand = Add->getOperand(I);
++        if (Operand.getNode() == Op.getNode() ||
++            Operand.getOpcode() != ISD::SHL)
++          continue;
++        const auto *Shift = dyn_cast<ConstantSDNode>(Operand.getOperand(1));
++        if (Shift && Shift->getZExtValue() >= 1 &&
++            Shift->getZExtValue() <= 3) {
++          HasScaledAddend = true;
++          break;
++        }
++      }
++    }
++    if (HasAddUser && !HasScaledAddend && isShiftedInt<8, 8>(Value))
+       return Op;
+     Type *Ty = Type::getInt32Ty(*DAG.getContext());
+     Constant *CV = ConstantInt::getSigned(Ty, Value);
+diff --git a/llvm/test/CodeGen/Xtensa/add_shifted_imm.ll b/llvm/test/CodeGen/Xtensa/add_shifted_imm.ll
+index df1a87aaf..f5b8c907d 100644
+--- a/llvm/test/CodeGen/Xtensa/add_shifted_imm.ll
++++ b/llvm/test/CodeGen/Xtensa/add_shifted_imm.ll
+@@ -47,3 +47,38 @@ define i64 @test_4(i32 %v) {
+   %res = zext i32 %addres to i64
+   ret i64 %res
+ }
++
++; Reassociation turns this into add (shl %v, 1), 8192. The shifted addend
++; must use the constant pool so ADDX2 selection cannot strand the constant.
++define i32 @test_reassociated(i32 %v) {
++; CHECK-LABEL: test_reassociated:
++; CHECK:       # %bb.0:
++; CHECK:       l32r a8, .LCPI4_0
++; CHECK:       addx2 a2, a2, a8
++; CHECK:       ret
++  %x = add i32 %v, 4096
++  %y = add i32 %x, %x
++  ret i32 %y
++}
++
++define i32 @test_scaled_shift2(i32 %v) {
++; CHECK-LABEL: test_scaled_shift2:
++; CHECK:       # %bb.0:
++; CHECK:       l32r a8, .LCPI5_0
++; CHECK:       addx4 a2, a2, a8
++; CHECK:       ret
++  %scaled = shl i32 %v, 2
++  %sum = add i32 %scaled, 8192
++  ret i32 %sum
++}
++
++define i32 @test_scaled_shift3(i32 %v) {
++; CHECK-LABEL: test_scaled_shift3:
++; CHECK:       # %bb.0:
++; CHECK:       l32r a8, .LCPI6_0
++; CHECK:       addx8 a2, a2, a8
++; CHECK:       ret
++  %scaled = shl i32 %v, 3
++  %sum = add i32 %scaled, 16384
++  ret i32 %sum
++}

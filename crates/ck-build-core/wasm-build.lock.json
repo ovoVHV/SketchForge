@@ -1,0 +1,13 @@
+{
+  "rustToolchain": "1.93.0-x86_64-pc-windows-msvc",
+  "target": "wasm32-unknown-unknown",
+  "wasmBindgen": {
+    "version": "0.2.126",
+    "hostArtifacts": {
+      "x86_64-pc-windows-msvc": {
+        "url": "https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.126/wasm-bindgen-0.2.126-x86_64-pc-windows-msvc.tar.gz",
+        "sha256": "5a3773c7e69cfb2d865e235e9210de184c8c3af1787720646ec1a8bbe09c6179"
+      }
+    }
+  }
+}

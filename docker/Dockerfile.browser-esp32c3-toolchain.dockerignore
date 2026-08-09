@@ -1,0 +1,6 @@
+# This CI image only copies the pinned YoWASP patch from the build context.
+# Keep large Arduino caches and unrelated application sources out of BuildKit.
+*
+!toolchains/
+!toolchains/esp32c3-riscv-wasm/
+!toolchains/esp32c3-riscv-wasm/yowasp-riscv-backend.patch

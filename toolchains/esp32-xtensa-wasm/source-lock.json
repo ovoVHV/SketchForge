@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "status": "candidate",
+  "compiler": {
+    "repository": "https://github.com/espressif/llvm-project.git",
+    "revision": "570c44b61995a6e0d7d9c7c5c9e78e9e40a8e6ec",
+    "packageVersion": "23.0.0-espressif.570c44b6.12",
+    "backend": "Xtensa",
+    "hostTriple": "wasm32-wasip1",
+    "wasiPatch": {
+      "path": "espressif-llvm-wasi.patch",
+      "sha256": "6b625688badd6b2a7cc18c3c42af7fa4db3d2ce900f9e0fea7664c95dd1db4a2",
+      "fileCount": 44,
+      "excludedWorkingTreePaths": [
+        "llvm/cmake/config.guess"
+      ]
+    }
+  },
+  "build": {
+    "wasiSdk": {
+      "repository": "https://github.com/WebAssembly/wasi-sdk.git",
+      "release": "wasi-sdk-29",
+      "version": "29.0",
+      "host": "x86_64-linux",
+      "archive": "wasi-sdk-29.0-x86_64-linux.tar.gz",
+      "url": "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz",
+      "size": 119441678,
+      "sha256": "87d1d1a2879d139cdc624b968efad3d4a97b8078cdff95e63ac88ecafd1a0171"
+    },
+    "wrapper": {
+      "repository": "https://github.com/YoWASP/clang.git",
+      "revision": "944dd7c774954180e621cc8e12984023a7f8bcbe",
+      "sourcePaths": [
+        "npmjs/lib/api.js",
+        "npmjs/lib/api.d.ts",
+        "npmjs/prepare.py",
+        "npmjs/package-in.json"
+      ],
+      "componentTranspiler": {
+        "package": "@bytecodealliance/jco",
+        "version": "1.15.1"
+      },
+      "runtime": {
+        "package": "@yowasp/runtime",
+        "version": "11.0.67"
+      }
+    }
+  },
+  "sdk": {
+    "arduinoEsp32Version": "3.3.7",
+    "profiles": [
+      {
+        "board": "esp32:esp32:esp32",
+        "target": "xtensa-esp-elf",
+        "mcpu": "esp32"
+      },
+      {
+        "board": "esp32:esp32:esp32s2",
+        "target": "xtensa-esp-elf",
+        "mcpu": "esp32s2"
+      },
+      {
+        "board": "esp32:esp32:esp32s3",
+        "target": "xtensa-esp-elf",
+        "mcpu": "esp32s3"
+      }
+    ]
+  }
+}

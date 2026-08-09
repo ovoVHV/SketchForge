@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "arduino-avr-uno-board",
+  "version": "1",
+  "revision": "e74c4adfa75d93523e54de63d86b6c847e457b4c8ee7717af63425b77e02540b",
+  "artifacts": [
+    {
+      "id": "variant-assets",
+      "kind": "asset-pack",
+      "size": 6437,
+      "sha256": "d313845f9916c1f21c8ba9848d40806f5caab52529ad510e81b3f15318441631",
+      "chunks": [
+        {
+          "path": "assets/avr-board-assets-d313845f9916c1f21c8ba9848d40806f5caab52529ad510e81b3f15318441631.pack",
+          "size": 6437,
+          "sha256": "d313845f9916c1f21c8ba9848d40806f5caab52529ad510e81b3f15318441631"
+        }
+      ]
+    }
+  ]
+}

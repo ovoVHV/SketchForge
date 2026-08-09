@@ -1,0 +1,120 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --ignore-scripts
+COPY tsconfig.json tsconfig.base.json ./
+COPY packages/core ./packages/core
+COPY packages/server ./packages/server
+COPY packages/web/public/esp32/v1/libraries ./packages/web/public/esp32/v1/libraries
+RUN npx tsc -b --force packages/core packages/server \
+    && AF_FEATURED_LIBRARY_DIR=/opt/arduinofast/featured-libraries \
+       node packages/server/dist/materialize-featured-libraries-cli.js
+
+FROM node:24-bookworm-slim AS production-dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY packages/server/package.json packages/server/
+RUN npm ci --omit=dev --ignore-scripts
+
+FROM rust:1.85-bookworm AS ck-build-core-native
+WORKDIR /src/crates/ck-build-core
+COPY crates/ck-build-core/Cargo.toml crates/ck-build-core/Cargo.lock ./
+COPY crates/ck-build-core/src ./src
+RUN cargo build --locked --release --bin ck-build-core
+
+FROM debian:bookworm-slim AS toolchain
+ARG ARDUINO_CORE_VERSION=1.8.6
+ARG ARDUINO_CORE_SHA256=49241fd5e504482b94954b5843c7d69ce38ebc1ab47ad3b677e8bb77e0cb8fe6
+ARG AVR_GCC_VERSION=7.3.0-atmel3.6.1-arduino7
+ARG AVR_GCC_SHA256=bd8c37f6952a2130ac9ee32c53f6a660feb79bee8353c8e289eb60fdcefed91e
+RUN apt-get update && apt-get install -y --no-install-recommends bzip2 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    mkdir -p /opt/avr /opt/avr-gcc; \
+    curl -fL --retry 5 -o /tmp/arduino-core-avr.tar.gz \
+      "https://github.com/arduino/ArduinoCore-avr/archive/refs/tags/${ARDUINO_CORE_VERSION}.tar.gz"; \
+    echo "${ARDUINO_CORE_SHA256}  /tmp/arduino-core-avr.tar.gz" | sha256sum -c -; \
+    curl -fL --retry 5 -o /tmp/avr-gcc.tar.bz2 \
+      "https://downloads.arduino.cc/tools/avr-gcc-${AVR_GCC_VERSION}-x86_64-pc-linux-gnu.tar.bz2"; \
+    echo "${AVR_GCC_SHA256}  /tmp/avr-gcc.tar.bz2" | sha256sum -c -; \
+    tar xzf /tmp/arduino-core-avr.tar.gz -C /tmp; \
+    tar xjf /tmp/avr-gcc.tar.bz2 -C /opt/avr-gcc --strip-components=1; \
+    cp -a "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/cores" /opt/avr/; \
+    cp -a "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/variants" /opt/avr/; \
+    cp -a "/tmp/ArduinoCore-avr-${ARDUINO_CORE_VERSION}/libraries" /opt/avr/; \
+    test -x /opt/avr-gcc/bin/avr-g++; \
+    test -f /opt/avr/cores/arduino/Arduino.h; \
+    rm -rf /tmp/ArduinoCore-avr-* /tmp/arduino-core-avr.tar.gz /tmp/avr-gcc.tar.bz2
+
+FROM node:24-bookworm-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends bubblewrap util-linux \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 arduinofast \
+    && useradd --uid 10001 --gid arduinofast --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast
+
+COPY --from=toolchain /opt/avr /opt/avr
+COPY --from=toolchain /opt/avr-gcc /opt/avr-gcc
+WORKDIR /app
+COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/packages/core/dist ./packages/core/dist
+COPY --from=build /app/packages/core/wasm ./packages/core/wasm
+COPY --from=ck-build-core-native /src/crates/ck-build-core/target/release/ck-build-core ./packages/core/native/ck-build-core
+COPY --from=build /app/packages/core/package.json ./packages/core/
+COPY --from=build /app/packages/server/dist ./packages/server/dist
+COPY --from=build /app/packages/server/package.json ./packages/server/
+COPY --from=build /opt/arduinofast/featured-libraries /opt/arduinofast/featured-libraries
+COPY boards ./boards
+COPY prebuild ./prebuild
+COPY package.json ./
+
+ENV AF_AVR_BIN=/opt/avr-gcc/bin \
+    AF_AVR_ROOT=/opt/avr-gcc \
+    AF_AVR_CORE=/opt/avr/cores/arduino \
+    AF_AVR_VARIANTS=/opt/avr/variants \
+    AF_LIBRARIES_DIRS=/opt/avr/libraries:/opt/arduinofast/featured-libraries \
+    AF_CACHE_DIR=/var/afcache \
+    AF_WORK_DIR=/var/afwork \
+    AF_ARTIFACT_DIR=/var/afartifacts \
+    AF_LIBRARY_STORE_DIR=/var/aflibraries \
+    AF_SANDBOX=bubblewrap \
+    AF_CK_BUILD_CORE_BACKEND=native \
+    AF_CK_BUILD_CORE_NATIVE=/app/packages/core/native/ck-build-core \
+    AF_WORKER_POOL=avr \
+    NODE_ENV=production
+
+RUN install -d -o arduinofast -g arduinofast -m 0750 \
+      /var/afcache /var/afwork /var/afartifacts /var/aflibraries /run/arduinofast
+VOLUME ["/var/afcache", "/var/afartifacts"]
+USER 10001:10001
+CMD ["node", "packages/server/dist/worker.js"]
+
+FROM runtime AS prewarm-build
+ARG AF_COMPILER_BUNDLE_ID
+ARG AF_PREWARM_BOARDS
+ENV AF_COMPILER_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_BOARDS=${AF_PREWARM_BOARDS} \
+    AF_PREWARM_CACHE_DIR=/var/afcache
+RUN test -n "$AF_COMPILER_BUNDLE_ID" \
+    || (echo "AF_COMPILER_BUNDLE_ID is required for the prewarmed target" >&2; exit 2)
+RUN node packages/server/dist/prewarm-avr-cli.js
+
+FROM runtime AS prewarmed
+ARG AF_COMPILER_BUNDLE_ID
+ARG AF_PREWARM_BOARDS
+ENV AF_COMPILER_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_SEED_DIR=/opt/arduinofast/prewarm-cache \
+    AF_PREWARM_SEED_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
+    AF_PREWARM_SEED_VERSION=avr-prewarm-v1/${AF_PREWARM_BOARDS}
+COPY --from=prewarm-build --chown=10001:10001 /var/afcache/ /opt/arduinofast/prewarm-cache/
+VOLUME ["/var/afcache", "/var/afartifacts"]
+LABEL com.arduinofast.cache-prewarmed="true"
+ENTRYPOINT ["node", "packages/server/dist/prewarm-cache-entrypoint.js"]
+
+FROM runtime AS final
+VOLUME ["/var/afcache", "/var/afartifacts"]

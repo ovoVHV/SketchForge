@@ -1,0 +1,342 @@
+{
+  "project": [
+    {
+      "path": "main.ino",
+      "content": "#include \"config.h\"\ntemplate <typename T>\nT ignored_template(T value) { return value; }\nvoid\nsetup(\n)\n{\n}\n"
+    },
+    {
+      "path": "Auxiliary.ino",
+      "content": "int\nauxiliary_value(\n)\n{\n  return 3;\n}\nvoid loop() {}\n"
+    },
+    {
+      "path": "\ud83d\ude00.ino",
+      "content": "int non_bmp_tab_value() { return 4; }\n"
+    },
+    {
+      "path": "\ue000.ino",
+      "content": "int bmp_tab_value() { return 5; }\n"
+    },
+    {
+      "path": "\ud83d\ude00.cpp",
+      "content": "int non_bmp_project_value = 1;\n"
+    },
+    {
+      "path": "\ue000.cpp",
+      "content": "int bmp_project_value = 2;\n"
+    },
+    {
+      "path": "src/driver.c",
+      "content": "int driver_value(void) { return 7; }\n"
+    },
+    {
+      "path": "src/startup.S",
+      "content": ".section .text\n"
+    },
+    {
+      "path": "config.h",
+      "content": "#define CK_CONFIG_VALUE 1\n"
+    }
+  ],
+  "target": {
+    "fqbn": "esp32:esp32:esp32c3",
+    "options": {
+      "FlashMode": "dio",
+      "PartitionScheme": "default"
+    },
+    "boardPack": {
+      "kind": "board",
+      "id": "board:esp32c3",
+      "version": "1.0.0",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "fqbn": "esp32:esp32:esp32c3",
+      "variant": "esp32c3"
+    }
+  },
+  "packs": {
+    "toolchain": {
+      "kind": "toolchain",
+      "id": "toolchain:riscv32-esp",
+      "version": "1.0.0",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "abi": "riscv32-esp-elf",
+      "instructionSet": "rv32imc"
+    },
+    "platform": {
+      "kind": "platform",
+      "id": "platform:espressif-arduino",
+      "version": "3.3.7",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "platform": "espressif-arduino"
+    },
+    "board": {
+      "kind": "board",
+      "id": "board:esp32c3",
+      "version": "1.0.0",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "fqbn": "esp32:esp32:esp32c3",
+      "variant": "esp32c3"
+    },
+    "libraries": {
+      "roots": [
+        "library:middle"
+      ],
+      "packs": [
+        {
+          "kind": "library",
+          "id": "library:middle",
+          "version": "2.0.0",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "name": "Middle",
+          "architectures": ["*"],
+          "manifest": {
+            "name": "Middle",
+            "version": "2.0.0"
+          },
+          "dependencies": [
+            {
+              "id": "library:leaf",
+              "version": "1.0.0",
+              "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        {
+          "kind": "library",
+          "id": "library:leaf",
+          "version": "1.0.0",
+          "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+          "name": "Leaf",
+          "architectures": ["esp32", "*"],
+          "manifest": {
+            "name": "Leaf",
+            "version": "1.0.0"
+          },
+          "dependencies": []
+        }
+      ]
+    }
+  },
+  "platform": {
+    "core": {
+      "files": [
+        {
+          "path": "Core.cpp",
+          "content": "#include \"Core.h\"\nvoid core_entry() {}\n"
+        },
+        {
+          "path": "Core.h",
+          "content": "#pragma once\n"
+        }
+      ],
+      "includePaths": ["."],
+      "macros": {
+        "CK_CORE": true
+      },
+      "flags": {
+        "cxx": ["-fno-rtti"]
+      },
+      "rootPath": "packs/platform/core"
+    },
+    "variant": {
+      "files": [
+        {
+          "path": "pins.cpp",
+          "content": "int variant_pin = 8;\n"
+        }
+      ],
+      "rootPath": "packs/board/variant"
+    },
+    "includePaths": ["packs/platform/sdk/include"],
+    "macros": {
+      "ARDUINO_ARCH_ESP32": true
+    },
+    "flags": {
+      "common": ["-ffunction-sections"]
+    },
+    "linkerScript": "packs/platform/ld/memory.ld",
+    "linkerFlags": ["-Lpacks/platform/sdk/lib", "-Wl,--start-group"],
+    "linkerInputs": [
+      {
+        "path": "packs/platform/ld/memory.ld",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "role": "linker-script-content"
+      }
+    ],
+    "prebuiltArchives": [
+      {
+        "path": "packs/platform/sdk/lib/libhal.a",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    ],
+    "linkerTailFlags": ["-Wl,--end-group"],
+    "archiveFlags": ["D"]
+  },
+  "libraries": [
+    {
+      "pack": {
+        "kind": "library",
+        "id": "library:leaf",
+        "version": "1.0.0",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "name": "Leaf",
+        "architectures": ["esp32", "*"],
+        "manifest": {
+          "name": "Leaf",
+          "version": "1.0.0"
+        },
+        "dependencies": []
+      },
+      "files": [
+        {
+          "path": "src/Leaf.h",
+          "content": "#pragma once\nint leaf_value();\n"
+        },
+        {
+          "path": "src/Leaf.cpp",
+          "content": "#include \"Leaf.h\"\nint leaf_value() { return 1; }\n"
+        },
+        {
+          "path": "src/detail.tpp",
+          "content": "template <typename T> T leaf_identity(T value) { return value; }\n"
+        }
+      ],
+      "includePaths": ["src"]
+    },
+    {
+      "pack": {
+        "kind": "library",
+        "id": "library:middle",
+        "version": "2.0.0",
+        "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "name": "Middle",
+        "architectures": ["*"],
+        "manifest": {
+          "name": "Middle",
+          "version": "2.0.0"
+        },
+        "dependencies": [
+          {
+            "id": "library:leaf",
+            "version": "1.0.0",
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ]
+      },
+      "files": [
+        {
+          "path": "src/Middle.h",
+          "content": "#pragma once\nint middle_value();\n"
+        },
+        {
+          "path": "src/Middle.cpp",
+          "content": "#include \"Middle.h\"\n#include \"config.h\"\nint middle_value() { return CK_CONFIG_VALUE; }\n"
+        }
+      ],
+      "includePaths": ["src"],
+      "flags": {
+        "common": ["-fdata-sections"]
+      }
+    }
+  ],
+  "tools": {
+    "c": "toolchain:riscv32-esp-gcc",
+    "cxx": "toolchain:riscv32-esp-g++",
+    "asm": "toolchain:riscv32-esp-gcc",
+    "ar": "toolchain:riscv32-esp-ar",
+    "ld": "toolchain:riscv32-esp-g++",
+    "objcopy": "toolchain:esptool"
+  },
+  "macros": {
+    "ARDUINO": "10819",
+    "CK_FEATURE": false
+  },
+  "includePaths": ["project"],
+  "flags": {
+    "common": ["-Os"],
+    "c": ["-std=gnu11"],
+    "cxx": ["-std=gnu++17"],
+    "asm": ["-x", "assembler-with-cpp"]
+  },
+  "compilerInputs": [
+    {
+      "path": "packs/platform/flags/compiler.flags",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "role": "compiler-config"
+    }
+  ],
+  "compilerPackInputs": [
+    {
+      "kind": "pack-artifact",
+      "packId": "platform:espressif-arduino",
+      "packRevision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "packSchema": 1,
+      "artifactId": "compile-vfs",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "role": "compiler-vfs"
+    }
+  ],
+  "linkerPackInputs": [
+    {
+      "kind": "pack-artifact",
+      "packId": "platform:espressif-arduino",
+      "packRevision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "packSchema": 1,
+      "artifactId": "link-vfs",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "role": "linker-vfs"
+    }
+  ],
+  "archiveOperation": "crs",
+  "archiveFlags": ["s"],
+  "preprocessFlags": ["--arduino-compatible"],
+  "transforms": [
+    "bin",
+    {
+      "format": "bootloader",
+      "id": "transform-bootloader",
+      "productId": "bootloader-image",
+      "input": "packs/platform/images/bootloader.elf",
+      "inputs": [
+        {
+          "path": "packs/platform/images/bootloader.elf",
+          "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+          "role": "bootloader-source"
+        }
+      ],
+      "output": "build/bootloader.bin",
+      "flags": ["--chip", "esp32c3"],
+      "tool": "toolchain:esptool",
+      "dependencies": [],
+      "offset": "0x0"
+    },
+    {
+      "format": "partition",
+      "id": "transform-partitions",
+      "productId": "partitions-image",
+      "input": "packs/platform/partitions/default.csv",
+      "inputs": [
+        {
+          "path": "packs/platform/partitions/default.csv",
+          "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "role": "partition-source"
+        }
+      ],
+      "output": "build/partitions.bin",
+      "tool": "toolchain:gen_esp32part",
+      "arguments": ["packs/platform/partitions/default.csv", "build/partitions.bin"],
+      "dependencies": [],
+      "offset": "0x8000"
+    }
+  ],
+  "outputRoot": "build",
+  "resourceLimits": {
+    "compile": {
+      "cpuMs": 30000,
+      "memoryBytes": 268435456
+    },
+    "link": {
+      "cpuMs": 30000,
+      "outputBytes": 16777216
+    }
+  }
+}

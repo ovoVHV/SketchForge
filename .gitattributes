@@ -1,0 +1,28 @@
+* text=auto eol=lf
+
+*.c text eol=lf
+*.cc text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.mjs text eol=lf
+*.rs text eol=lf
+*.sh text eol=lf
+*.ts text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile* text eol=lf
+
+# Preserve byte-level provenance for pinned upstream patches and license texts.
+toolchains/**/*.patch -whitespace
+toolchains/**/licenses/** -whitespace
+scripts/esp32-xtensa-wasm-package/licenses/** -whitespace
+
+*.ps1 text eol=crlf
+*.wasm binary
+*.pack binary
+*.bin binary
+*.gz binary
