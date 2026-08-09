@@ -83,7 +83,7 @@ node scripts/bench-static-http.mjs
 要求 Node.js 20 或更高版本：
 
 ```bash
-npm ci --ignore-scripts --omit=optional
+npm ci --ignore-scripts
 npm run typecheck
 npm test
 ```
@@ -184,7 +184,7 @@ not a simultaneous compile-user guarantee.
 Node.js 20 or newer is required:
 
 ```bash
-npm ci --ignore-scripts --omit=optional
+npm ci --ignore-scripts
 npm run typecheck
 npm test
 ```
