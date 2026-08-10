@@ -4,8 +4,10 @@ import {
   boardOptionUnavailable,
   browserCompileUnavailableMessage,
   compileFallbackRoute,
+  createBrowserCompileProgressReporter,
   diagnosticsForFile,
   firmwareArtifacts,
+  shouldRetryBrowserAssetBuild,
   unsupportedBoardOptionReason,
   validateRestoredBoardConfiguration,
   withTimeout,
@@ -31,6 +33,62 @@ describe('editor workflow boundaries', () => {
       { handled: false, reason: 'headers' },
       { supported: true, execution: 'browser' },
     )).toBe('代码引用的头文件尚未纳入浏览器编译包');
+  });
+
+  it('retries only a first browser asset-stage failure', () => {
+    const failedAssets = { handled: false, reason: 'assets' };
+    expect(shouldRetryBrowserAssetBuild(failedAssets, null, 0, 'esp32:esp32:esp32')).toBe(true);
+    expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 0, 'esp32:esp32:esp32c3')).toBe(true);
+    expect(shouldRetryBrowserAssetBuild(failedAssets, 'compiling', 0, 'esp32:esp32:esp32')).toBe(false);
+    expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 1, 'esp32:esp32:esp32')).toBe(false);
+    expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 0, 'arduino:avr:uno')).toBe(false);
+    expect(shouldRetryBrowserAssetBuild({ handled: false, reason: 'libraries' }, 'assets', 0, 'esp32:esp32:esp32')).toBe(false);
+  });
+
+  it('keeps browser asset resolution visibly alive without inventing a percentage', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-10T00:00:00Z'));
+    const statuses: Array<{ text: string; percent: number | null }> = [];
+    const indeterminate: boolean[] = [];
+    const reporter = createBrowserCompileProgressReporter({
+      onStatus: (text, percent) => statuses.push({ text, percent }),
+      onIndeterminateChange: (active) => indeterminate.push(active),
+    });
+    try {
+      reporter.report({
+        stage: 'assets',
+        percent: 0,
+        detail: 'Resolving CK Platform and Library Packs',
+      });
+      expect(statuses.at(-1)).toEqual(expect.objectContaining({ percent: null }));
+      expect(statuses.at(-1)?.text).toContain('首次加载会较慢，请勿关闭页面');
+      expect(statuses.at(-1)?.text).toContain('已等待 0 秒');
+      expect(indeterminate.at(-1)).toBe(true);
+      expect(vi.getTimerCount()).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(statuses.at(-1)?.text).toContain('已等待 3 秒');
+      reporter.report({ stage: 'assets', percent: 0, detail: '正在自动重试' });
+      expect(vi.getTimerCount()).toBe(1);
+      expect(statuses.at(-1)?.text).toContain('正在自动重试');
+
+      reporter.report({ stage: 'assets', percent: 8, detail: 'unpacking SDK' });
+      expect(statuses.at(-1)).toEqual({ text: 'assets · unpacking SDK', percent: 8 });
+      expect(vi.getTimerCount()).toBe(0);
+
+      reporter.report({ stage: 'assets', percent: 0, detail: 'Resolving CK Platform and Library Packs' });
+      reporter.report({ stage: 'compiling', percent: 12, detail: 'main.ino' });
+      expect(statuses.at(-1)).toEqual({ text: 'compiling · main.ino', percent: 12 });
+      expect(indeterminate.at(-1)).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+      const count = statuses.length;
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(statuses).toHaveLength(count);
+    } finally {
+      reporter.dispose();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it('marks only diagnostics for the active project file in the gutter', () => {

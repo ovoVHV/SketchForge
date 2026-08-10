@@ -74,8 +74,10 @@ import {
   boardOptionUnavailable,
   browserCompileUnavailableMessage,
   compileFallbackRoute,
+  createBrowserCompileProgressReporter,
   diagnosticsForFile,
   firmwareArtifacts,
+  shouldRetryBrowserAssetBuild,
   unsupportedBoardOptionReason,
   validateRestoredBoardConfiguration,
   withTimeout,
@@ -1052,10 +1054,25 @@ const escapeHtml = (s) =>
 
 const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * 18;
 
+function setProgressIndeterminate(active) {
+  if (active) {
+    progressRingEl.dataset.indeterminate = 'true';
+    progressRingEl.setAttribute('aria-busy', 'true');
+    progressRingEl.removeAttribute('aria-valuenow');
+    progressRingEl.setAttribute('aria-valuetext', '正在加载编译资产');
+    progressValueEl.textContent = '...';
+    return;
+  }
+  delete progressRingEl.dataset.indeterminate;
+  progressRingEl.removeAttribute('aria-busy');
+  progressRingEl.removeAttribute('aria-valuetext');
+}
+
 function setStatus(text, pct = null, color = null) {
   statusEl.textContent = text;
   statusEl.style.color = color || '';
   if (pct !== null) {
+    setProgressIndeterminate(false);
     const numericPct = Number(pct);
     const safePct = Number.isFinite(numericPct)
       ? Math.min(100, Math.max(0, numericPct))
@@ -1223,6 +1240,7 @@ function invalidateCompileOutput() {
   const hadOutput = Boolean(lastHex || lastResult || lastDiags.length);
   clearCompileOutput();
   if (activeCompile) {
+    activeCompile.browserProgress?.dispose();
     setStatus('内容已修改，当前编译结果将被忽略', 0, 'var(--warn)');
   } else if (hadOutput) {
     setStatus('内容已修改，请重新编译', 0, 'var(--warn)');
@@ -1236,6 +1254,7 @@ function finishCompile(run) {
     run.eventSource?.close();
     if (run.elapsedTimer) clearInterval(run.elapsedTimer);
     if (run.statusTimer) clearTimeout(run.statusTimer);
+    run.browserProgress?.dispose();
     void clearStoredCompile(run);
   }
   updateActionState();
@@ -1360,6 +1379,8 @@ function makeCompileRun(context, details = {}) {
     percent: 4,
     elapsedTimer: null,
     statusTimer: null,
+    browserProgress: null,
+    browserStage: null,
     checkingStatus: false,
     closed: false,
     persistence: 'memory',
@@ -1648,11 +1669,29 @@ async function compile() {
   };
 
   let browserBuild;
+  const browserProgress = createBrowserCompileProgressReporter({
+    onStatus: setStatus,
+    onIndeterminateChange: setProgressIndeterminate,
+  });
+  run.browserProgress = browserProgress;
+  let browserAssetAttempt = 0;
+  const onBrowserProgress = ({ stage, percent, detail }) => {
+    if (activeCompile !== run || currentCompileContextKey() !== run.key) return;
+    if (stage === 'fallback') return;
+    run.browserStage = stage;
+    const visibleDetail = browserAssetAttempt > 0 && stage === 'assets'
+      ? '连接中断，正在自动重试 1/1'
+      : detail;
+    browserProgress.report({ stage, percent, detail: visibleDetail });
+  };
   try {
-    browserBuild = await compileInBrowser(body, ({ stage, percent, detail }) => {
-      if (activeCompile !== run || currentCompileContextKey() !== run.key) return;
-      setStatus(detail ? `${stage} · ${detail}` : stage, percent);
-    }, { signal: run.controller.signal });
+    browserBuild = await compileInBrowser(body, onBrowserProgress, { signal: run.controller.signal });
+    if (shouldRetryBrowserAssetBuild(browserBuild, run.browserStage, browserAssetAttempt, context.board)) {
+      browserAssetAttempt += 1;
+      console.warn('[SketchForge] Browser compile assets failed; retrying once.', browserBuild.error);
+      browserProgress.report({ stage: 'assets', percent: 0, detail: '连接中断，正在自动重试 1/1' });
+      browserBuild = await compileInBrowser(body, onBrowserProgress, { signal: run.controller.signal });
+    }
   } catch {
     if (run.controller.signal.aborted) {
       completeLocalCancellation(run);
@@ -1660,6 +1699,9 @@ async function compile() {
     }
     // 浏览器编译器故障不能卡住页面；统一交给服务端编译通道兜底。
     browserBuild = { handled: false, reason: 'runtime' };
+  } finally {
+    browserProgress.dispose();
+    run.browserProgress = null;
   }
   if (activeCompile !== run) return;
   if (run.controller.signal.aborted) {

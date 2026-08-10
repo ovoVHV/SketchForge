@@ -1,6 +1,6 @@
 # MIXLU Project Progress
 
-Last updated: 2026-08-10 12:59:21 +08:00
+Last updated: 2026-08-10 19:19:47 +08:00
 
 This file is the public progress snapshot. It contains no server credentials,
 private keys, deployment passwords, or private operational paths.
@@ -34,6 +34,7 @@ the full Arduino CLI locally.
 | Source release hygiene | Complete | 100% | Apache-2.0, notices, source audit, package metadata, and sensitive-file exclusions are present |
 | SketchForge rename and public documentation | Complete | 100% | Source identifiers, UI labels, README, support matrix, and compatibility migration are updated |
 | 16-way unique-source browser concurrency | Complete | 100% | One browser session compiled 16 different ESP32 sketches successfully (`16/16`), with a roughly 59-second full overlap window |
+| Browser asset loading feedback and ESP32 recovery retry | Complete | 100% | Asset resolution shows elapsed seconds and an indeterminate ring; one retry is limited to the ESP32 asset stage |
 | Automated hardware runner | Pending | 0% | Browser Web Serial already works; CI hardware automation is intentionally left for a later stage |
 
 ## Published browser targets

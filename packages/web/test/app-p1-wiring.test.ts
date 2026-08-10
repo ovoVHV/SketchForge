@@ -28,6 +28,16 @@ describe('app P1 workflow wiring', () => {
     expect(appSource).toMatch(/progressRingEl\.setAttribute\('aria-valuenow'/);
     expect(appSource).toMatch(/progressValueEl\.textContent/);
     expect(appSource).not.toMatch(/progressEl\.style\.width/);
+    expect(html).toMatch(/progress-ring\[data-indeterminate="true"\]/);
+    expect(appSource).toMatch(/function setProgressIndeterminate\(active\)/);
+  });
+
+  it('keeps browser asset loading alive and retries one transient asset-stage failure', () => {
+    expect(appSource).toMatch(/createBrowserCompileProgressReporter\s*\(\s*\{/);
+    expect(appSource).toMatch(/shouldRetryBrowserAssetBuild\(browserBuild,\s*run\.browserStage,\s*browserAssetAttempt,\s*context\.board\)/);
+    expect(appSource).toMatch(/run\.browserProgress\?\.dispose\(\)/);
+    expect(appSource).toMatch(/activeCompile\.browserProgress\?\.dispose\(\)/);
+    expect(appSource).toContain('连接中断，正在自动重试 1/1');
   });
 
   it('keeps textarea editing semantics while rendering local syntax highlighting', () => {

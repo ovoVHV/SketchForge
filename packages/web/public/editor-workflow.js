@@ -29,6 +29,71 @@ export function browserCompileUnavailableMessage(browserBuild, routeInfo) {
   }
 }
 
+export function shouldRetryBrowserAssetBuild(browserBuild, lastStage, attempt = 0, board = '') {
+  return attempt < 1
+    && typeof board === 'string'
+    && board.startsWith('esp32:')
+    && browserBuild?.handled === false
+    && browserBuild.reason === 'assets'
+    && (lastStage == null || lastStage === 'assets');
+}
+
+export function createBrowserCompileProgressReporter({
+  onStatus,
+  onIndeterminateChange = () => {},
+  now = () => Date.now(),
+  setIntervalFn = (callback, delay) => setInterval(callback, delay),
+  clearIntervalFn = (timer) => clearInterval(timer),
+} = {}) {
+  if (typeof onStatus !== 'function') throw new TypeError('browser compile status callback is required');
+  if (typeof onIndeterminateChange !== 'function') {
+    throw new TypeError('browser compile indeterminate callback must be a function');
+  }
+
+  let assetTimer = null;
+  let assetStartedAt = 0;
+  let assetDetail = '';
+
+  const clearAssetTimer = () => {
+    if (assetTimer !== null) clearIntervalFn(assetTimer);
+    assetTimer = null;
+  };
+  const elapsed = () => {
+    const seconds = Math.max(0, Math.floor((now() - assetStartedAt) / 1_000));
+    return seconds < 60 ? `${seconds} 秒` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+  };
+  const renderAssets = () => {
+    const detail = assetDetail && assetDetail !== 'Resolving CK Platform and Library Packs'
+      ? ` · ${assetDetail}`
+      : '';
+    onStatus(`正在解析编译资产（平台与库 Pack）${detail} · 首次加载会较慢，请勿关闭页面 · 已等待 ${elapsed()}`, null);
+  };
+
+  return Object.freeze({
+    report({ stage, percent, detail } = {}) {
+      const waitingForAssets = stage === 'assets'
+        && (!Number.isFinite(Number(percent)) || Number(percent) <= 0);
+      if (!waitingForAssets) {
+        clearAssetTimer();
+        onIndeterminateChange(false);
+        onStatus(detail ? `${stage} · ${detail}` : stage, percent);
+        return;
+      }
+      assetDetail = typeof detail === 'string' ? detail : '';
+      if (assetTimer === null) {
+        assetStartedAt = now();
+        assetTimer = setIntervalFn(renderAssets, 1_000);
+      }
+      onIndeterminateChange(true);
+      renderAssets();
+    },
+    dispose() {
+      clearAssetTimer();
+      onIndeterminateChange(false);
+    },
+  });
+}
+
 export function diagnosticsForFile(diagnostics, file) {
   if (!Array.isArray(diagnostics) || typeof file !== 'string') return [];
   return diagnostics.filter((diagnostic) => diagnostic?.file === file);
