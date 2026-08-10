@@ -7,6 +7,30 @@ const appSource = readFileSync(
   join(process.cwd(), 'packages/web/public/app.js'),
   'utf8',
 );
+const pageSource = readFileSync(
+  join(process.cwd(), 'packages/web/public/index.html'),
+  'utf8',
+);
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cssRuleBodiesForSelector(source: string, selector: string): string[] {
+  const selectorPattern = new RegExp(
+    `(?:^|[\\s,>+~.#])${escapeRegExp(selector)}(?=\\s*(?:[,>+~:#.\\[]|$))`,
+  );
+  return [...source.matchAll(/([^{}]+)\{([^{}]*)\}/gs)]
+    .filter(([, header]) => selectorPattern.test(header.replace(/\/\*[\s\S]*?\*\//g, '').trim()))
+    .map(([, , declarations]) => declarations);
+}
+
+function hasThemeDeclarations(bodies: string[]): boolean {
+  return bodies.some((declarations) =>
+    /(?:^|;)\s*color\s*:\s*var\(--ink\)/.test(declarations)
+    && /(?:^|;)\s*background(?:-color)?\s*:\s*var\(--(?:canvas|surface(?:-[\w-]+)?)\)/.test(declarations),
+  );
+}
 
 function sourceSection(start: string, end: string): string {
   const startIndex = appSource.indexOf(start);
@@ -89,6 +113,33 @@ describe('app P1 workflow wiring', () => {
     );
   });
 
+  it('themes the board select and its native dropdown entries explicitly', () => {
+    expect(pageSource).toMatch(/<select id="board"\s+aria-label="[^"]+"><\/select>/);
+
+    const controls = [
+      ['select', ['.board-picker select', '#board', 'select']],
+      ['option', ['.board-picker select option', '#board option', 'select option', 'option']],
+      ['optgroup', ['.board-picker select optgroup', '#board optgroup', 'select optgroup', 'optgroup']],
+    ] as const;
+
+    for (const [control, selectors] of controls) {
+      const ruleBodies = selectors.flatMap((selector) =>
+        cssRuleBodiesForSelector(pageSource, selector),
+      );
+      expect(
+        hasThemeDeclarations(ruleBodies),
+        `${control} must declare var(--ink) text and a themed background`,
+      ).toBe(true);
+    }
+  });
+
+  it('discloses that the demo page is only a view of the foundation capabilities', () => {
+    const bodyMarkup = pageSource.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? '';
+    expect(bodyMarkup).toContain(
+      '\u8be5\u9875\u9762\u4ec5\u5c55\u793a\u5e95\u5ea7\u80fd\u529b\uff0c\u4e0d\u4ee3\u8868\u9879\u76ee\u5168\u90e8\u529f\u80fd',
+    );
+  });
+
   it('routes download artifacts through the shared firmware artifact collector', () => {
     const renderArtifactDownloads = sourceSection(
       'function renderArtifactDownloads(result)',
@@ -101,6 +152,47 @@ describe('app P1 workflow wiring', () => {
     expect(renderArtifactDownloads).toMatch(
       /const\s+artifacts\s*=\s*result\?\.status\s*===\s*'success'\s*\?\s*firmwareArtifacts\(result\)\s*:\s*\[\];/,
     );
+  });
+
+  it('keeps firmware downloads in their own bounded scroll region', () => {
+    const artifactSectionCss = cssRuleBodiesForSelector(pageSource, '.artifact-section').join('\n');
+    const artifactListCss = cssRuleBodiesForSelector(pageSource, '.artifact-list').join('\n');
+
+    expect(pageSource).toMatch(
+      /class="[^"]*\bartifact-section\b[^"]*"\s+id="artifact-section"/,
+    );
+    expect(pageSource).toMatch(
+      /id="artifact-downloads"\s+class="[^"]*\bartifact-list\b[^"]*"/,
+    );
+    expect(artifactSectionCss).toMatch(/display\s*:\s*flex/);
+    expect(artifactSectionCss).toMatch(/flex-direction\s*:\s*column/);
+    expect(`${artifactSectionCss}\n${artifactListCss}`).toMatch(
+      /(?:min-height\s*:\s*0|max-height\s*:[^;]+)/,
+    );
+    expect(artifactListCss).toMatch(/min-height\s*:\s*0/);
+    expect(artifactListCss).toMatch(/overflow(?:-y)?\s*:\s*auto/);
+  });
+
+  it('shows complete artifact metadata without overflowing narrow screens', () => {
+    const renderArtifactDownloads = sourceSection(
+      'function renderArtifactDownloads(result)',
+      'function clearCompileOutput()',
+    );
+    const artifactRowCss = cssRuleBodiesForSelector(pageSource, '.artifact-row').join('\n');
+    const artifactTextCss = cssRuleBodiesForSelector(pageSource, '.artifact-row span').join('\n');
+    const artifactButtonCss = cssRuleBodiesForSelector(pageSource, '.artifact-row button').join('\n');
+
+    expect(renderArtifactDownloads).toMatch(
+      /const\s+location\s*=\s*artifact\.offset[\s\S]*?const\s+size\s*=\s*Number\.isFinite\(artifact\.size\)[\s\S]*?label\.textContent\s*=\s*`\$\{artifact\.name\}\$\{location\}\$\{size\}`/,
+    );
+    expect(renderArtifactDownloads).toMatch(/label\.title\s*=\s*label\.textContent/);
+    expect(artifactTextCss).toMatch(/overflow-wrap\s*:\s*(?:anywhere|break-word)/);
+    expect(artifactTextCss).toMatch(/white-space\s*:\s*(?:normal|pre-wrap)/);
+    expect(artifactTextCss).not.toMatch(/text-overflow\s*:\s*ellipsis/);
+    expect(artifactRowCss).toMatch(/grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+auto/);
+    expect(artifactRowCss).toMatch(/width\s*:\s*100%/);
+    expect(artifactRowCss).toMatch(/min-width\s*:\s*0/);
+    expect(artifactButtonCss).toMatch(/white-space\s*:\s*nowrap/);
   });
 
   it('rechecks the result and compile context after loading artifact bytes', () => {

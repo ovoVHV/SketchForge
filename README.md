@@ -13,6 +13,10 @@
 >
 > SketchForge is a working browser IDE, not a text editor demo. The hosted instance can compile supported AVR and ESP32 targets, produce firmware, download it, and flash boards through Web Serial.
 
+> **页面范围说明：** 在线页面仅展示当前发布的底座能力，不代表项目的全部规划功能；未列出的板卡和库会继续兼容与验证。
+>
+> **Scope note:** The hosted page shows the currently published foundation capabilities, not the full project roadmap. Additional boards and libraries will continue to be added and verified.
+
 ## 中文
 
 ### 一页完成从代码到板子的流程
