@@ -27,12 +27,36 @@ interface PlatformLibraryBuildOptions {
   registry: string;
   output: string;
   names?: string[];
+  providerOverrides?: readonly PlatformLibraryProviderOverride[];
 }
 
 interface SourceFile {
   path: string;
   bytes: Buffer;
 }
+
+interface PlatformLibraryProviderOverride {
+  platformId: string;
+  platformVersion: string;
+  platformLibrary: string;
+  catalogLibrary: string;
+  catalogVersion: string;
+}
+
+interface ResolvedPlatformLibraryProviderOverride {
+  platform: { name: string; version: string };
+  catalog: { name: string; version: string };
+}
+
+export const CK_PLATFORM_LIBRARY_PROVIDER_OVERRIDES = Object.freeze([
+  Object.freeze({
+    platformId: 'espressif-arduino',
+    platformVersion: '3.3.7',
+    platformLibrary: 'BLE',
+    catalogLibrary: 'ESP32 BLE Arduino',
+    catalogVersion: '1.0.1',
+  }),
+]);
 
 export function buildCkPlatformLibraryPacks(options: PlatformLibraryBuildOptions) {
   const platformRoot = resolve(options.platformRoot);
@@ -116,7 +140,14 @@ export function buildCkPlatformLibraryPacks(options: PlatformLibraryBuildOptions
   }
 
   removeAmbiguousPlatformHeaders(rows);
-  const merged = mergeRegistry(baseRegistry, rows);
+  const providerOverrides = resolvePlatformLibraryProviderOverrides(
+    baseRegistry,
+    rows,
+    options.platformId,
+    options.platformVersion,
+    options.providerOverrides ?? CK_PLATFORM_LIBRARY_PROVIDER_OVERRIDES,
+  );
+  const merged = mergeRegistry(baseRegistry, rows, providerOverrides);
   const registry = inferCatalogRegistryDependencies(merged, output);
   const registryBytes = Buffer.from(stableJson(registry));
   writeFileSync(join(output, 'registry.staging.json'), registryBytes);
@@ -128,6 +159,7 @@ export function buildCkPlatformLibraryPacks(options: PlatformLibraryBuildOptions
       revision: options.platformRevision ?? options.platformVersion,
     },
     built: rows.map((row) => ({ name: row.name, version: row.defaultVersion })),
+    providerOverrides,
     registry: {
       libraries: registry.libraries.length,
       sha256: sha256(registryBytes),
@@ -189,9 +221,65 @@ function writePlatformLibraryPack(output: string, row: any): string {
   return `${slug}/${row.version}/toolchain.json`;
 }
 
-function mergeRegistry(base: any, additions: any[]) {
+function resolvePlatformLibraryProviderOverrides(
+  base: any,
+  additions: any[],
+  platformId: string,
+  platformVersion: string,
+  policies: readonly PlatformLibraryProviderOverride[],
+): ResolvedPlatformLibraryProviderOverride[] {
+  const baseByName = new Map((base.libraries ?? []).map((library: any) => [
+    String(library.name).toLowerCase(),
+    library,
+  ]));
+  const additionsByName = new Map(additions.map((library: any) => [
+    String(library.name).toLowerCase(),
+    library,
+  ]));
+  const resolved: ResolvedPlatformLibraryProviderOverride[] = [];
+  const byPlatform = new Map<string, string>();
+  for (const policy of policies) {
+    if (policy.platformId !== platformId || policy.platformVersion !== platformVersion) continue;
+    const catalog: any = baseByName.get(policy.catalogLibrary.toLowerCase());
+    const platform: any = additionsByName.get(policy.platformLibrary.toLowerCase());
+    if (!catalog || !platform) continue;
+    const catalogVersion = catalog.versions.find((version: any) => version.version === policy.catalogVersion);
+    if (!catalogVersion) {
+      throw new Error(`catalog provider override version is missing: ${policy.catalogLibrary}@${policy.catalogVersion}`);
+    }
+    const catalogHeaders = new Set(catalogVersion.publicHeaders.map((header: string) => header.toLowerCase()));
+    const uncovered = [...new Set(platform.versions.flatMap((version: any) => version.publicHeaders)
+      .map((header: string) => header.toLowerCase()))]
+      .filter((header) => !catalogHeaders.has(header));
+    if (uncovered.length) {
+      throw new Error(`catalog provider override does not cover ${policy.platformLibrary}: ${uncovered.join(', ')}`);
+    }
+    const platformKey = platform.name.toLowerCase();
+    const existing = byPlatform.get(platformKey);
+    if (existing && existing !== catalog.name.toLowerCase()) {
+      throw new Error(`catalog provider override is ambiguous: ${platform.name}`);
+    }
+    byPlatform.set(platformKey, catalog.name.toLowerCase());
+    resolved.push({
+      platform: { name: platform.name, version: platform.defaultVersion },
+      catalog: { name: catalog.name, version: catalogVersion.version },
+    });
+  }
+  return resolved;
+}
+
+function mergeRegistry(
+  base: any,
+  additions: any[],
+  providerOverrides: readonly ResolvedPlatformLibraryProviderOverride[] = [],
+) {
+  const catalogDefaults = new Map(providerOverrides.map((override) => [
+    override.platform.name.toLowerCase(),
+    override.catalog,
+  ]));
+  const effectiveAdditions = additions.filter((addition) => !catalogDefaults.has(addition.name.toLowerCase()));
   const platformDefaults = new Map<string, { name: string; version: string }>();
-  for (const addition of additions) {
+  for (const addition of effectiveAdditions) {
     const key = addition.name.toLowerCase();
     const existing = platformDefaults.get(key);
     if (existing && existing.version !== addition.defaultVersion) {
@@ -203,7 +291,7 @@ function mergeRegistry(base: any, additions: any[]) {
     });
   }
   const platformHeaders = new Map<string, string>();
-  for (const addition of additions) for (const version of addition.versions) {
+  for (const addition of effectiveAdditions) for (const version of addition.versions) {
     for (const header of version.publicHeaders) {
       const key = header.toLowerCase();
       const owner = platformHeaders.get(key);
@@ -219,7 +307,7 @@ function mergeRegistry(base: any, additions: any[]) {
     // for that target. Keeping older same-name catalog versions makes an
     // explicit version request bypass Arduino's platform-library precedence
     // and can combine sources written for a different core ABI.
-    if (platformDefaults.has(name)) return [];
+    if (platformDefaults.has(name) || catalogDefaults.has(name)) return [];
     const versions = library.versions.filter((version: any) => !version.publicHeaders.some((header: string) => {
       const owner = platformHeaders.get(header.toLowerCase());
       return owner !== undefined && owner !== name;
@@ -231,8 +319,9 @@ function mergeRegistry(base: any, additions: any[]) {
       // Keep existing dependency pins aligned with the selected platform
       // provider so one closure cannot select sources from two platform ABIs.
       depends: version.depends.map((dependency: any) => {
-        const platform = platformDefaults.get(dependency.name.toLowerCase());
-        return platform ? { name: platform.name, version: platform.version } : dependency;
+        const replacement = catalogDefaults.get(dependency.name.toLowerCase())
+          ?? platformDefaults.get(dependency.name.toLowerCase());
+        return replacement ? { name: replacement.name, version: replacement.version } : dependency;
       }),
     }));
     if (!versions.some((version: any) => version.version === value.defaultVersion)) {
@@ -241,7 +330,7 @@ function mergeRegistry(base: any, additions: any[]) {
     return [value];
   });
   const byName = new Map(retained.map((library: any) => [library.name.toLowerCase(), library]));
-  for (const addition of additions) {
+  for (const addition of effectiveAdditions) {
     const key = addition.name.toLowerCase();
     const current: any = byName.get(key);
     if (!current) {
@@ -255,6 +344,12 @@ function mergeRegistry(base: any, additions: any[]) {
       else current.versions[index] = structuredClone(version);
     }
     current.versions.sort((left: any, right: any) => compareText(left.version, right.version));
+  }
+  for (const replacement of catalogDefaults.values()) {
+    const library: any = byName.get(replacement.name.toLowerCase());
+    if (!library?.versions.some((version: any) => version.version === replacement.version)) {
+      throw new Error(`catalog provider override was removed during merge: ${replacement.name}@${replacement.version}`);
+    }
   }
   return {
     schema: 2,

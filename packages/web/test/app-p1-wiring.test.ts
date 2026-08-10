@@ -30,6 +30,37 @@ describe('app P1 workflow wiring', () => {
     expect(appSource).not.toMatch(/progressEl\.style\.width/);
   });
 
+  it('keeps textarea editing semantics while rendering local syntax highlighting', () => {
+    const html = readFileSync(
+      join(process.cwd(), 'packages/web/public/index.html'),
+      'utf8',
+    );
+    const renderGutter = sourceSection('function renderGutter()', "codeEl.addEventListener('input'");
+    const inputHandler = sourceSection(
+      "codeEl.addEventListener('input'",
+      "codeEl.addEventListener('compositionupdate'",
+    );
+
+    expect(appSource).toMatch(/import\s*\{\s*highlightArduino\s*\}\s*from '\.\/syntax-highlight\.js';/);
+    expect(html).toMatch(/<pre class="code-highlight" id="code-highlight" aria-hidden="true"><code><\/code><\/pre>/);
+    expect(html).toMatch(/<textarea id="code" spellcheck="false"/);
+    expect(renderGutter).toMatch(/highlightCode\.innerHTML\s*=\s*highlightArduino\(codeEl\.value\)/);
+    expect(inputHandler).toMatch(/renderGutter\(\)/);
+    expect(appSource).toMatch(/codeHighlightEl\.scrollLeft\s*=\s*codeEl\.scrollLeft/);
+  });
+
+  it('deduplicates browser Pack cache operations and only exposes exact Registry matches', () => {
+    const renderLibraries = sourceSection('function renderLibraryList()', 'async function cacheBrowserLibrary(key)');
+    const cacheLibrary = sourceSection('async function cacheBrowserLibrary(key)', 'async function installServerLibrary(key)');
+
+    expect(renderLibraries).toMatch(/resolveEsp32BrowserCatalogLibrary\(browserLibraryRegistry,\s*library,\s*'esp32'\)/);
+    expect(renderLibraries).toMatch(/aria-busy="true"/);
+    expect(renderLibraries).toMatch(/>已缓存<\/button>/);
+    expect(cacheLibrary).toMatch(/browserLibraryCacheOperations\.get\(key\)/);
+    expect(cacheLibrary).toMatch(/browserLibraryCacheOperations\.set\(key,\s*operation\)/);
+    expect(cacheLibrary).toMatch(/browserLibraryCacheOperations\.delete\(key\)/);
+  });
+
   it('defaults browser-only visitors to the supported UNO compiler path', () => {
     const renderBoardSelector = sourceSection(
       'function renderBoardSelector()',
@@ -73,15 +104,30 @@ describe('app P1 workflow wiring', () => {
     );
   });
 
-  it('keeps catalog refreshes from rewriting selected libraries or project state', () => {
+  it('migrates selected libraries to the exact published browser Pack version', () => {
     const loadLibraryCatalog = sourceSection(
       'async function loadLibraryCatalog(',
       'function cloudProjectId()',
     );
 
     expect(loadLibraryCatalog).toMatch(/libraryCatalog\s*=/);
-    expect(loadLibraryCatalog).not.toMatch(
-      /\b(?:installLibrarySelections|persistLocalProjectState)\s*\(/,
+    expect(loadLibraryCatalog).toMatch(/reconcileEsp32BrowserLibraryReferences/);
+    expect(loadLibraryCatalog).toMatch(/installLibrarySelections\(migratedReferences\)/);
+    expect(loadLibraryCatalog).toMatch(/persistLocalProjectState\(\)/);
+    expect(appSource).not.toMatch(/setSelectedLibraryRefs\(/);
+  });
+
+  it('keeps the last valid browser Registry when a refresh fails', () => {
+    const loadLibraryCatalog = sourceSection(
+      'async function loadLibraryCatalog(',
+      'function cloudProjectId()',
+    );
+
+    expect(loadLibraryCatalog).toMatch(
+      /browserRegistryLoad\.status\s*===\s*'fulfilled'[\s\S]*?browserLibraryRegistry\s*=\s*browserRegistryLoad\.value[\s\S]*?else\s*\{\s*browserLibraryRegistryError\s*=/,
+    );
+    expect(loadLibraryCatalog).toMatch(
+      /else\s*\{\s*browserLibraryRegistry\s*=\s*null;\s*browserLibraryRegistryError\s*=\s*null;\s*\}/,
     );
   });
 

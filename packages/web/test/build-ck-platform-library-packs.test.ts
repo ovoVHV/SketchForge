@@ -195,6 +195,67 @@ describe('CK platform Library Pack builder', () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('keeps the pinned ESP32 BLE catalog Pack instead of the conflicting platform provider', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ck-platform-library-catalog-override-'));
+    try {
+      const catalogPlatform = join(root, 'catalog-platform');
+      const emptyRegistry = join(root, 'empty-registry');
+      const catalogOutput = join(root, 'catalog-output');
+      const targetPlatform = join(root, 'target-platform');
+      const targetOutput = join(root, 'target-output');
+      mkdirSync(catalogPlatform, { recursive: true });
+      mkdirSync(emptyRegistry, { recursive: true });
+      mkdirSync(targetPlatform, { recursive: true });
+      writeFileSync(join(catalogPlatform, 'platform.txt'), 'name=Catalog Fixture\n');
+      writeFileSync(join(targetPlatform, 'platform.txt'), 'name=ESP32 Fixture\n');
+      writeFileSync(join(emptyRegistry, 'registry.json'), JSON.stringify({ schema: 2, libraries: [] }));
+      const headers = ['BLEDevice.h', 'BLEUtils.h', 'BLEScan.h', 'BLEAdvertisedDevice.h'];
+      writeLibraryWithHeaders(
+        catalogPlatform,
+        'ESP32_BLE_Arduino',
+        'ESP32 BLE Arduino',
+        headers,
+        '1.0.1',
+      );
+
+      buildCkPlatformLibraryPacks({
+        platformRoot: catalogPlatform,
+        platformId: 'catalog-fixture',
+        platformVersion: '1.0.1',
+        registry: join(emptyRegistry, 'registry.json'),
+        output: catalogOutput,
+      });
+
+      writeLibraryWithHeaders(targetPlatform, 'BLE', 'BLE', headers, '3.3.7');
+      const result = buildCkPlatformLibraryPacks({
+        platformRoot: targetPlatform,
+        platformId: 'espressif-arduino',
+        platformVersion: '3.3.7',
+        registry: join(catalogOutput, 'registry.staging.json'),
+        output: targetOutput,
+      });
+
+      expect(result.registry.libraries.map((library: any) => library.name)).toEqual([
+        'ESP32 BLE Arduino',
+      ]);
+      const esp32Ble = result.registry.libraries[0];
+      expect(esp32Ble).toMatchObject({
+        defaultVersion: '1.0.1',
+        versions: [{
+          version: '1.0.1',
+          pack: { id: 'arduino-lib-esp32-ble-arduino' },
+        }],
+      });
+      expect(result.report.providerOverrides).toEqual([{
+        platform: { name: 'BLE', version: '3.3.7' },
+        catalog: { name: 'ESP32 BLE Arduino', version: '1.0.1' },
+      }]);
+      expect(readFileSync(join(targetOutput, esp32Ble.versions[0].pack.manifest), 'utf8')).toBeTruthy();
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 function writeLibrary(
@@ -229,4 +290,27 @@ function writeLibraryWithoutIncludes(platform: string, name: string, headers: st
   ].join('\n'));
   for (const header of headers) writeFileSync(join(root, 'src', header), '#pragma once\n');
   writeFileSync(join(root, 'src', `${name}.cpp`), `#include "${headers[0]}"\n`);
+}
+
+function writeLibraryWithHeaders(
+  platform: string,
+  directory: string,
+  name: string,
+  headers: string[],
+  version: string,
+) {
+  const root = join(platform, 'libraries', directory);
+  mkdirSync(join(root, 'src'), { recursive: true });
+  writeFileSync(join(root, 'library.properties'), [
+    `name=${name}`,
+    `version=${version}`,
+    'architectures=esp32',
+    `includes=${headers.join(',')}`,
+    '',
+  ].join('\n'));
+  for (const header of headers) writeFileSync(join(root, 'src', header), '#pragma once\n');
+  writeFileSync(
+    join(root, 'src', `${directory}.cpp`),
+    `${headers.map((header) => `#include "${header}"`).join('\n')}\n`,
+  );
 }

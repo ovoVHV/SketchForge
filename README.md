@@ -30,12 +30,16 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| 网页编辑器 | Arduino C/C++、多文件项目、文件夹导入、源码文件管理 |
+| 网页编辑器 | Arduino C/C++ 本地语法高亮、多文件项目、文件夹导入、源码文件管理；移动端长代码保持独立滚动 |
 | 浏览器编译 | Web Worker + WebAssembly 在用户设备上完成主要编译工作 |
 | 编译结果 | 错误诊断、编译进度、Flash/RAM 占用、`.hex` / `.bin` 固件下载 |
 | 直接烧录 | AVR 使用 STK500，ESP32 使用 `esptool-js`，USB 不需要交给服务器 |
 | 串口调试 | 同页打开串口监视器，查看开发板输出 |
-| 库与项目 | 145 个库、147 个锁定版本，GitHub 库导入，项目云保存与归档导入导出 |
+| 库与项目 | active Registry 为 145 个库、147 个锁定版本，GitHub 库导入，项目云保存与归档导入导出 |
+
+库列表会按 active Registry 的精确 `库名@版本` 与 Pack 摘要对账，不再把“名称相同但版本没有发布”的库误标为可浏览器编译。ESP32 BLE Arduino Pack 的生成与目录识别修复已纳入发布流程；生产 active Registry 已用 `ESP32 BLE Arduino@1.0.1` 替换冲突的 `BLE@3.3.7` provider，因此公开统计仍为 **145 个库、147 个锁定版本**。
+
+浏览器缓存按钮按不可变 Pack 身份去重：连续点击或多个库共享同一依赖时只执行一次下载，成功后保持“已缓存”，失败后仍可重试。Registry 临时加载失败时，页面保留最后一次有效目录并给出状态提示，不会把已经可用的 Pack 突然清空。
 
 ### 三步开始
 
@@ -189,12 +193,16 @@ This is not a mock editor or a static code box. Write Arduino C/C++, choose a bo
 
 | Capability | Details |
 | --- | --- |
-| Browser editor | Arduino C/C++, multi-file projects, folder import, and source-file management |
+| Browser editor | Local Arduino C/C++ syntax highlighting, multi-file projects, folder import, source-file management, and bounded mobile scrolling for long code |
 | Browser compiler | Web Worker + WebAssembly; most compile CPU stays on the user's device |
 | Build output | Progress, diagnostics, Flash/RAM usage, and `.hex` / `.bin` downloads |
 | Direct flashing | AVR through STK500; ESP32 through `esptool-js` and Web Serial |
 | Serial monitor | Inspect board output without leaving the editor |
-| Projects and libraries | Cloud project storage, archive import/export, GitHub library import, 145 libraries and 147 locked versions |
+| Projects and libraries | Cloud project storage, archive import/export, GitHub library import, and an active Registry of 145 libraries / 147 locked versions |
+
+Library availability is reconciled against the exact published `name@version` and immutable Pack digest, so a same-name but unpublished version is no longer presented as browser-ready. The ESP32 BLE Arduino Pack generation and catalog-recognition fix is part of the publishing pipeline; the production active Registry now uses `ESP32 BLE Arduino@1.0.1` in place of the conflicting `BLE@3.3.7` provider, so the advertised total remains **145 libraries and 147 locked versions**.
+
+Browser Pack caching is deduplicated by immutable Pack identity. Repeated clicks and shared dependencies reuse one in-flight download, successful entries remain visibly cached, and failed downloads can be retried. A temporary Registry refresh failure keeps the last valid catalog visible instead of clearing known-good Packs.
 
 ### Start in three steps
 

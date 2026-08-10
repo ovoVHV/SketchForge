@@ -22,6 +22,13 @@
     --green: #28c58a;
     --amber: #efb34d;
     --red: #f07178;
+    --syntax-comment: #718096;
+    --syntax-string: #9ad477;
+    --syntax-preprocessor: #e6a35c;
+    --syntax-keyword: #75bfff;
+    --syntax-number: #d6a8ff;
+    --syntax-constant: #f0c674;
+    --syntax-function: #62d6c5;
     --mono: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, "Liberation Mono", monospace;
     --sans: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   }
@@ -43,6 +50,13 @@
       --green: #087f5b;
       --amber: #a96808;
       --red: #c23d4b;
+      --syntax-comment: #526275;
+      --syntax-string: #26734d;
+      --syntax-preprocessor: #995500;
+      --syntax-keyword: #005fcc;
+      --syntax-number: #6d3bb5;
+      --syntax-constant: #765500;
+      --syntax-function: #00796b;
     }
   }
   * { box-sizing: border-box; }
@@ -280,8 +294,26 @@
   .gutter div { white-space: pre; }
   .gutter div.has-error { color: var(--red); font-weight: 700; }
   .gutter div.has-warn { color: var(--amber); font-weight: 700; }
-  textarea#code { flex: 1; min-width: 0; min-height: 0; border: 0; outline: 0; resize: none; padding: 14px 18px; font: 13px/21px var(--mono); background: var(--canvas); color: var(--ink); tab-size: 2; white-space: pre; overflow-wrap: normal; overflow: auto; caret-color: var(--cyan); }
-  textarea#code::selection { background: rgb(66 200 232 / 22%); }
+  .code-surface { position: relative; flex: 1; min-width: 0; min-height: 0; overflow: hidden; background: var(--canvas); }
+  .code-highlight, textarea#code { box-sizing: border-box; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 14px 18px; border: 0; outline: 0; font: 13px/21px var(--mono); tab-size: 2; white-space: pre; overflow-wrap: normal; }
+  .code-highlight { z-index: 0; overflow: auto; color: var(--ink); pointer-events: none; scrollbar-width: none; }
+  .code-highlight::-webkit-scrollbar { display: none; }
+  .code-highlight code { display: block; min-width: max-content; padding: 0; background: transparent; font: inherit; color: inherit; }
+  .syntax-comment { color: var(--syntax-comment); }
+  .syntax-string { color: var(--syntax-string); }
+  .syntax-preprocessor { color: var(--syntax-preprocessor); }
+  .syntax-keyword { color: var(--syntax-keyword); }
+  .syntax-number { color: var(--syntax-number); }
+  .syntax-constant { color: var(--syntax-constant); }
+  .syntax-function { color: var(--syntax-function); }
+  textarea#code { z-index: 1; resize: none; overflow: auto; background: transparent; color: transparent; caret-color: var(--cyan); -webkit-text-fill-color: transparent; }
+  textarea#code::selection { background: rgb(66 200 232 / 22%); color: transparent; }
+  .library-notice { padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent); background: color-mix(in srgb, var(--amber) 10%, transparent); color: var(--amber); font-size: 11px; line-height: 16px; }
+  @media (forced-colors: active) {
+    .code-highlight { display: none; }
+    textarea#code { color: CanvasText; -webkit-text-fill-color: CanvasText; background: Canvas; caret-color: CanvasText; }
+    textarea#code::selection { color: HighlightText; background: Highlight; }
+  }
 
   /* Build output keeps the status ring visible while diagnostics scroll independently. */
   .output-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--surface); }
@@ -357,11 +389,11 @@
     .top-actions button { font-size: 0; min-width: 32px; padding: 5px; }
     #btn-compile::before, #btn-flash::before, #btn-monitor::before { margin: 0; font-size: 15px; }
     #board-config { grid-column: 2; grid-row: 1; justify-self: end; margin-right: 108px; }
-    .app-main { display: grid; grid-template-columns: 1fr; grid-template-rows: 42px auto minmax(680px, 1fr); }
+    .app-main { display: grid; grid-template-columns: 1fr; grid-template-rows: 42px auto 720px; }
     .activity-rail { grid-column: 1; grid-row: 1; flex-direction: row; justify-content: flex-start; padding: 5px 8px; border-right: 0; border-bottom: 1px solid var(--line); }
     .rail-bottom { margin: 0 0 0 auto; display: flex; }
     .explorer-panel { grid-column: 1; grid-row: 2; max-height: 360px; border-right: 0; border-bottom: 1px solid var(--line); }
-    .editor-workspace { grid-column: 1; grid-row: 3; min-height: 720px; grid-template-rows: 42px minmax(300px, 1fr) 250px 27px; }
+    .editor-workspace { grid-column: 1; grid-row: 3; height: 720px; min-height: 720px; overflow: hidden; grid-template-rows: 42px minmax(300px, 1fr) 250px 27px; }
     .editor-tab-meta { display: none; }
     .output-body { display: block; overflow: auto; }
     .output-panel[data-view="diagnostics"] .monitor-pane, .output-panel[data-view="monitor"] .diagnostics-pane { display: none; }
@@ -496,7 +528,10 @@
 
     <div class="editor">
       <div class="gutter" id="gutter"></div>
-      <textarea id="code" spellcheck="false" aria-label="Arduino 源码编辑器"></textarea>
+      <div class="code-surface">
+        <pre class="code-highlight" id="code-highlight" aria-hidden="true"><code></code></pre>
+        <textarea id="code" spellcheck="false" aria-label="Arduino 源码编辑器"></textarea>
+      </div>
     </div>
 
     <section class="output-panel" id="output-panel" data-view="diagnostics" aria-label="编译输出">

@@ -58,9 +58,14 @@ import {
 import { ESP32_BROWSER_RELEASE } from './esp32/v1/release.js';
 import {
   installEsp32BrowserLibraryPack,
+  listInstalledEsp32BrowserLibraryPacks,
   loadEsp32BrowserLibraryRegistry,
-  resolveEsp32BrowserLibraries,
 } from './esp32/v1/library-registry.js';
+import {
+  reconcileEsp32BrowserLibraryCatalog,
+  reconcileEsp32BrowserLibraryReferences,
+  resolveEsp32BrowserCatalogLibrary,
+} from './browser-library-catalog.js';
 import {
   installGitHubLibrary,
   mergeInstalledLibraries,
@@ -78,6 +83,8 @@ import {
 import {
   filterLibrariesForArchitecture,
 } from './library-architecture.js';
+import { highlightArduino } from './syntax-highlight.js';
+import { createBrowserLibraryCacheCoordinator } from './browser-library-cache.js';
 import {
   mergeLibrarySelectionRows,
   normalizeLibraryReferences,
@@ -91,6 +98,7 @@ void registerBrowserAvrCache();
 
 const $ = (id) => document.getElementById(id);
 const codeEl = $('code');
+const codeHighlightEl = $('code-highlight');
 const gutterEl = $('gutter');
 const diagsEl = $('diags');
 const statusEl = $('status');
@@ -176,8 +184,13 @@ let projectSnapshot = null;
 let activeProjectFile = 'main.ino';
 let libraryCatalog = [];
 let browserLibraryRegistry = null;
+const browserLibraryCacheOperations = new Map();
+const browserLibraryCache = createBrowserLibraryCacheCoordinator({
+  install: (options) => installEsp32BrowserLibraryPack(options),
+});
 let libraryCatalogLoadSequence = 0;
 let selectedLibraries = new Map();
+let browserLibraryRegistryError = null;
 let libraryImporting = false;
 let firmwareDownloading = false;
 let editingProjectFile = null;
@@ -578,22 +591,38 @@ function renderLibraryList() {
     !query || `${library.name} ${library.description ?? ''}`.toLowerCase().includes(query)
   ));
   if (!rows.length) {
-    libraryListEl.innerHTML = '<div class="empty">没有匹配的库</div>';
+    const notice = browserLibraryRegistryError
+      ? '<div class="library-notice" role="status">浏览器库目录暂时加载失败，已保留可用目录；稍后可重试。</div>'
+      : '';
+    libraryListEl.innerHTML = `${notice}<div class="empty">没有匹配的库</div>`;
     return;
   }
-  libraryListEl.innerHTML = rows.map((library) => {
+  const notice = browserLibraryRegistryError
+    ? '<div class="library-notice" role="status">浏览器库目录暂时加载失败，已保留可用目录；稍后可重试。</div>'
+    : '';
+  libraryListEl.innerHTML = notice + rows.map((library) => {
     const key = library.catalogKey || library.selectionKey;
     const checked = library.selected ? ' checked' : '';
-    const browserReady = currentBoard()?.arch === 'esp32'
-      && Boolean(browserLibraryRegistry?.byName?.has(library.name.toLowerCase()));
+    const browserResolution = currentBoard()?.arch === 'esp32'
+      ? resolveEsp32BrowserCatalogLibrary(browserLibraryRegistry, library, 'esp32')
+      : null;
+    const browserReady = Boolean(browserResolution);
+    const cached = browserReady && browserLibraryCache.hasAll(browserResolution.libraries);
+    const caching = browserReady && (
+      browserLibraryCacheOperations.has(key)
+      || browserResolution.libraries.some((selection) => browserLibraryCache.isPending(selection))
+    );
     const installed = library.installed === true;
     const markers = [
       browserReady ? 'WASM' : '',
+      currentBoard()?.arch === 'esp32' && !browserReady ? '无浏览器 Pack' : '',
       installed ? '已导入' : '',
       library.retained ? '目录中不可用' : '',
     ].filter(Boolean).join(' · ');
-    const action = library.retained ? '' : browserReady
-      ? `<button type="button" data-cache-library="${escapeHtml(key)}" title="缓存浏览器 WASM 库">缓存</button>`
+    const action = library.retained ? '' : browserReady && cached
+      ? '<button type="button" disabled aria-label="浏览器库已缓存" title="浏览器 Pack 已缓存">已缓存</button>'
+      : browserReady
+        ? `<button type="button" data-cache-library="${escapeHtml(key)}" title="缓存浏览器 WASM 库"${caching ? ' disabled aria-busy="true"' : ''}>${caching ? '缓存中' : '缓存'}</button>`
       : !installed && library.source?.repository
         ? `<button type="button" data-install-library="${escapeHtml(key)}" title="安装到服务器">安装</button>`
         : '';
@@ -638,19 +667,35 @@ function renderLibraryList() {
 async function cacheBrowserLibrary(key) {
   const item = libraryCatalog.find((candidate) => libraryKey(candidate.name, candidate.version) === key);
   if (!item || !browserLibraryRegistry) return;
-  try {
-    const resolved = resolveEsp32BrowserLibraries(browserLibraryRegistry, [{ name: item.name, version: item.version }], 'esp32');
-    if (!resolved.supported) throw new Error('该库当前没有可用的浏览器 Pack');
-    for (const selection of resolved.libraries) {
-      await installEsp32BrowserLibraryPack({
-        registry: browserLibraryRegistry,
-        selection,
-        onProgress: ({ loaded, total }) => setStatus(`缓存 ${selection.name}… ${total ? Math.round((loaded / total) * 100) : 0}%`, 0),
-      });
+  const existing = browserLibraryCacheOperations.get(key);
+  if (existing) return existing;
+  const operation = (async () => {
+    try {
+      const resolved = resolveEsp32BrowserCatalogLibrary(browserLibraryRegistry, item, 'esp32');
+      if (!resolved) throw new Error('该库当前没有可用的浏览器 Pack');
+      if (browserLibraryCache.hasAll(resolved.libraries)) return true;
+      for (const selection of resolved.libraries) {
+        await browserLibraryCache.ensure(selection, {
+          registry: browserLibraryRegistry,
+          architecture: 'esp32',
+          selection,
+          onProgress: ({ loaded, total }) => setStatus(`缓存 ${selection.name}… ${total ? Math.round((loaded / total) * 100) : 0}%`, 0),
+        });
+      }
+      setStatus(`浏览器库已缓存：${item.name}`, 0, 'var(--ok)');
+      return true;
+    } catch (error) {
+      setStatus(`浏览器库缓存失败：${error.message}`, 0, 'var(--err)');
+      return false;
     }
-    setStatus(`浏览器库已缓存：${item.name}`, 0, 'var(--ok)');
-  } catch (error) {
-    setStatus(`浏览器库缓存失败：${error.message}`, 0, 'var(--err)');
+  })();
+  browserLibraryCacheOperations.set(key, operation);
+  renderLibraryList();
+  try {
+    return await operation;
+  } finally {
+    if (browserLibraryCacheOperations.get(key) === operation) browserLibraryCacheOperations.delete(key);
+    renderLibraryList();
   }
 }
 
@@ -746,7 +791,21 @@ async function loadLibraryCatalog({ stillCurrent = () => true } = {}) {
   const sequence = ++libraryCatalogLoadSequence;
   const architecture = currentBoard()?.arch;
   const query = architecture ? `?arch=${encodeURIComponent(architecture)}` : '';
-  const [catalogLoad, installedLoad, browserRegistryLoad] = await Promise.allSettled([
+  const browserRegistryPromise = architecture === 'esp32'
+    ? withTimeout(
+      loadEsp32BrowserLibraryRegistry({ release: ESP32_BROWSER_RELEASE }),
+      OPTIONAL_CATALOG_TIMEOUT_MS,
+      'browser library registry',
+    )
+    : Promise.resolve(null);
+  const browserCachePromise = architecture === 'esp32'
+    ? withTimeout(
+      listInstalledEsp32BrowserLibraryPacks(),
+      OPTIONAL_CATALOG_TIMEOUT_MS,
+      'browser library cache',
+    )
+    : Promise.resolve([]);
+  const [catalogLoad, installedLoad, browserRegistryLoad, browserCacheLoad] = await Promise.allSettled([
     withTimeout(fetch(apiUrl(`libraries/catalog${query}`), { cache: 'no-store' }).then(async (response) => {
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.libraries)) throw new Error('invalid library catalog');
@@ -757,29 +816,44 @@ async function loadLibraryCatalog({ stillCurrent = () => true } = {}) {
       if (!response.ok || !Array.isArray(payload.libraries)) throw new Error('invalid installed libraries');
       return payload.libraries;
     }), OPTIONAL_CATALOG_TIMEOUT_MS, 'installed libraries'),
-    withTimeout(
-      loadEsp32BrowserLibraryRegistry({ release: ESP32_BROWSER_RELEASE }),
-      OPTIONAL_CATALOG_TIMEOUT_MS,
-      'browser library registry',
-    ),
+    browserRegistryPromise,
+    browserCachePromise,
   ]);
   if (sequence !== libraryCatalogLoadSequence || !stillCurrent()) return false;
   libraryCatalog = catalogLoad.status === 'fulfilled' ? catalogLoad.value : [];
   const installedLibraries = installedLoad.status === 'fulfilled' ? installedLoad.value : [];
-  browserLibraryRegistry = browserRegistryLoad.status === 'fulfilled' ? browserRegistryLoad.value : null;
-  if (architecture === 'esp32' && !libraryCatalog.length && browserLibraryRegistry) {
-    libraryCatalog = browserLibraryRegistry.libraries.map((library) => {
-      const version = library.versions.find((candidate) => candidate.version === library.defaultVersion);
-      return {
-        name: library.name,
-        version: library.defaultVersion,
-        architectures: version?.architectures ?? ['esp32'],
-        description: '浏览器 WASM Pack',
-        source: { kind: 'pack' },
-      };
-    });
+  if (architecture === 'esp32') {
+    if (browserRegistryLoad.status === 'fulfilled' && browserRegistryLoad.value) {
+      browserLibraryRegistry = browserRegistryLoad.value;
+      browserLibraryRegistryError = null;
+    } else {
+      browserLibraryRegistryError = browserRegistryLoad.reason ?? new Error('browser library registry unavailable');
+    }
+    if (browserCacheLoad.status === 'fulfilled') browserLibraryCache.remember(browserCacheLoad.value);
+  } else {
+    browserLibraryRegistry = null;
+    browserLibraryRegistryError = null;
   }
   libraryCatalog = mergeInstalledLibraries(libraryCatalog, installedLibraries);
+  if (architecture === 'esp32' && browserLibraryRegistry) {
+    libraryCatalog = reconcileEsp32BrowserLibraryCatalog(libraryCatalog, browserLibraryRegistry, architecture);
+    const previousReferences = selectedLibraryRefs();
+    const migratedReferences = reconcileEsp32BrowserLibraryReferences(
+      previousReferences,
+      browserLibraryRegistry,
+      architecture,
+    );
+    const changed = migratedReferences.length !== previousReferences.length
+      || migratedReferences.some((reference, index) => (
+        reference.name !== previousReferences[index]?.name
+        || reference.version !== previousReferences[index]?.version
+      ));
+    if (changed) {
+      installLibrarySelections(migratedReferences);
+      persistLocalProjectState();
+      invalidateCompileOutput();
+    }
+  }
   renderLibraryList();
   return true;
 }
@@ -878,6 +952,12 @@ async function loadCloudProject() {
 }
 
 function renderGutter() {
+  if (codeHighlightEl) {
+    const highlightCode = codeHighlightEl.querySelector('code');
+    if (highlightCode) highlightCode.innerHTML = highlightArduino(codeEl.value);
+    codeHighlightEl.scrollTop = codeEl.scrollTop;
+    codeHighlightEl.scrollLeft = codeEl.scrollLeft;
+  }
   const lines = codeEl.value.split('\n').length;
   const bySeverity = new Map();
   for (const d of diagnosticsForFile(lastDiags, activeProjectFile)) {
@@ -901,12 +981,20 @@ codeEl.addEventListener('input', () => {
   try {
     syncActiveProjectFile();
     renderProjectFiles();
+    renderGutter();
   } catch (error) {
     setStatus(error.message, 0, 'var(--err)');
   }
   invalidateCompileOutput();
 });
-codeEl.addEventListener('scroll', () => { gutterEl.scrollTop = codeEl.scrollTop; });
+codeEl.addEventListener('compositionupdate', renderGutter);
+codeEl.addEventListener('scroll', () => {
+  gutterEl.scrollTop = codeEl.scrollTop;
+  if (codeHighlightEl) {
+    codeHighlightEl.scrollTop = codeEl.scrollTop;
+    codeHighlightEl.scrollLeft = codeEl.scrollLeft;
+  }
+});
 
 /** 把光标移到指定行并滚动过去 —— 图形化平台在这一步会改成"高亮对应积木" */
 function jumpToLine(line, column = 1) {

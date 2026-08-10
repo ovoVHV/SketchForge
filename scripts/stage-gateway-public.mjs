@@ -37,6 +37,13 @@ const STATIC_ENTRY_FILES = Object.freeze([
 ]);
 const MODULE_ENTRY_FILES = Object.freeze(['app.js']);
 const DYNAMIC_LOCAL_LOADERS = Object.freeze({
+  'ck-rust-build-core.js': Object.freeze([
+    Object.freeze({
+      kind: 'dynamic-import',
+      expression: 'bindingsUrl.href',
+      staticUrl: './ck-build-core-wasm/ck_build_core.js',
+    }),
+  ]),
   'esp32/v1/c3-runtime.js': Object.freeze([
     Object.freeze({
       kind: 'worker-url',
