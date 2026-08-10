@@ -111,3 +111,15 @@ the full Arduino CLI locally.
 4. Put the large runtime assets behind a CDN and test weak devices and cold
    cache downloads.
 5. Add an automated real hardware runner and record repeatable board evidence.
+
+## MCU Component Fabric experiment
+
+- Stage 1 completed on 2026-08-11: an isolated `experiments/forge-component`
+  area now defines ECABI v0, a strict development Manifest Schema, bounded
+  FCMP/1 serial framing, and the portable Blink WAT source.
+- Completion: contract skeleton 100%; browser simulator 0%; reference runtime
+  0%; ESP32-C3 hardware runtime 0%.
+- Boundary: the production SketchForge editor and its legacy full-firmware
+  build path are unchanged. No ESP32-C3 hardware claim is made by this stage.
+- Next gate: compile Blink to real Wasm bytes in the browser, validate its
+  digest and capabilities, and execute those same bytes in two isolated hosts.

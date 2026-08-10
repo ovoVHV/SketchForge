@@ -1,0 +1,40 @@
+{
+  "schema": "forge.component/v0",
+  "name": "blink",
+  "version": "0.1.0",
+  "abi": "forge:embedded@0.1",
+  "artifact": {
+    "format": "core-wasm",
+    "sha256": "__WASM_SHA256__",
+    "size": 0
+  },
+  "lifecycle": {
+    "init": "init",
+    "tick": "tick"
+  },
+  "resources": {
+    "linearMemoryMax": 65536,
+    "stackMax": 4096,
+    "tickBudgetUs": 2000
+  },
+  "capabilities": {
+    "gpio": [
+      {
+        "handle": 1,
+        "pin": 8,
+        "modes": ["output"]
+      }
+    ],
+    "timer": {
+      "sleepMsMax": 2000
+    }
+  },
+  "health": {
+    "startupDeadlineMs": 1000
+  },
+  "security": {
+    "mode": "development",
+    "securityVersion": 0
+  }
+}
+

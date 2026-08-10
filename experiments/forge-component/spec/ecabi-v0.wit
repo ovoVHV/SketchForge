@@ -1,0 +1,34 @@
+package forge:embedded@0.1.0;
+
+interface gpio {
+  enum mode {
+    input,
+    output,
+    input-pull-up,
+  }
+
+  enum error {
+    denied,
+    invalid-argument,
+    out-of-range,
+    unsupported,
+    busy,
+    bad-state,
+  }
+
+  configure: func(pin: u8, selected-mode: mode) -> result<_, error>;
+  write: func(pin: u8, level: bool) -> result<_, error>;
+}
+
+interface timer {
+  sleep-ms: func(duration: u32) -> result;
+}
+
+world forge-app {
+  import gpio;
+  import timer;
+
+  export init: func() -> result;
+  export tick: func() -> result;
+}
+

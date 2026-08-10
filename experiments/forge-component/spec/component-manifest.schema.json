@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sketchforge.dev/schemas/forge-component-v0.json",
+  "title": "Forge Component Manifest v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "name",
+    "version",
+    "abi",
+    "artifact",
+    "lifecycle",
+    "resources",
+    "capabilities",
+    "security"
+  ],
+  "properties": {
+    "schema": {
+      "const": "forge.component/v0"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,62}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "abi": {
+      "const": "forge:embedded@0.1"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "sha256", "size"],
+      "properties": {
+        "format": {
+          "const": "core-wasm"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 32768
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["init", "tick"],
+      "properties": {
+        "init": { "const": "init" },
+        "tick": { "const": "tick" }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["linearMemoryMax", "stackMax", "tickBudgetUs"],
+      "properties": {
+        "linearMemoryMax": {
+          "type": "integer",
+          "minimum": 65536,
+          "maximum": 65536
+        },
+        "stackMax": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 8192
+        },
+        "tickBudgetUs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 5000
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gpio", "timer"],
+      "properties": {
+        "gpio": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["handle", "pin", "modes"],
+            "properties": {
+              "handle": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 255
+              },
+              "pin": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30
+              },
+              "modes": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["input", "output", "input-pull-up"]
+                }
+              }
+            }
+          }
+        },
+        "timer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sleepMsMax"],
+          "properties": {
+            "sleepMsMax": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5000
+            }
+          }
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startupDeadlineMs": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 5000
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "enum": ["development", "production"]
+        },
+        "securityVersion": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      }
+    }
+  }
+}
+
