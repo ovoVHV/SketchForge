@@ -69,6 +69,9 @@ the full Arduino CLI locally.
 - This is browser-side capacity under warm immutable asset conditions. It is
   not evidence of 16 server workers, a completely cold download, or a promise
   of 1,000 simultaneous first-time users.
+- The public repository commit `d062eefb15a0849e5fb6aca2a95ad8991106e5a1`
+  is on `main`; GitHub Actions Source checks run `31357358066` completed with
+  `success`.
 
 ## Concurrency plan
 
