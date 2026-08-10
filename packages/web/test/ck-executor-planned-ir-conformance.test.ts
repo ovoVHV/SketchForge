@@ -19,7 +19,7 @@ import {
   type ExecRequest,
   type LibraryPackRef,
   type SandboxExecutor,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { BrowserActionCache, BrowserWasmExecutor } from '../public/ck-browser-executor.js';

@@ -28,6 +28,7 @@ function createWorkerHarness(scope = 'https://studio.example.test/') {
   const cache = {
     match: vi.fn(),
     put: vi.fn(),
+    keys: vi.fn().mockResolvedValue([]),
   };
   const caches = {
     open: vi.fn().mockResolvedValue(cache),
@@ -143,9 +144,10 @@ describe('AVR compiler service worker', () => {
   it('deletes previous namespaces while preserving the current v3 cache', async () => {
     const { caches, listeners, self } = createWorkerHarness();
     caches.keys.mockResolvedValue([
-      'arduinofast-avr-toolchain-v1',
-      'arduinofast-avr-toolchain-v2',
+      'sketchforge-avr-toolchain-v1',
+      'sketchforge-avr-toolchain-v2',
       'arduinofast-avr-toolchain-v3',
+      'sketchforge-avr-toolchain-v3',
       'unrelated-cache',
     ]);
     const handler = listeners.get('activate') as unknown as LifecycleHandler;
@@ -153,10 +155,11 @@ describe('AVR compiler service worker', () => {
     const background = dispatchLifecycle(handler);
 
     await expect(background).resolves.toBeUndefined();
-    expect(caches.delete).toHaveBeenCalledTimes(2);
-    expect(caches.delete).toHaveBeenCalledWith('arduinofast-avr-toolchain-v1');
-    expect(caches.delete).toHaveBeenCalledWith('arduinofast-avr-toolchain-v2');
-    expect(caches.delete).not.toHaveBeenCalledWith('arduinofast-avr-toolchain-v3');
+    expect(caches.delete).toHaveBeenCalledTimes(3);
+    expect(caches.delete).toHaveBeenCalledWith('sketchforge-avr-toolchain-v1');
+    expect(caches.delete).toHaveBeenCalledWith('sketchforge-avr-toolchain-v2');
+    expect(caches.delete).toHaveBeenCalledWith('arduinofast-avr-toolchain-v3');
+    expect(caches.delete).not.toHaveBeenCalledWith('sketchforge-avr-toolchain-v3');
     expect(caches.delete).not.toHaveBeenCalledWith('unrelated-cache');
     expect(self.clients.claim).toHaveBeenCalledOnce();
   });
@@ -174,7 +177,7 @@ describe('AVR compiler service worker', () => {
 
     await expect(response).resolves.toBe(cached);
     await expect(background).resolves.toBeUndefined();
-    expect(caches.open).toHaveBeenCalledWith('arduinofast-avr-toolchain-v3');
+    expect(caches.open).toHaveBeenCalledWith('sketchforge-avr-toolchain-v3');
     expect(fetch).not.toHaveBeenCalled();
   });
 

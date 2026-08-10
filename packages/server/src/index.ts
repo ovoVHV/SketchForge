@@ -22,7 +22,7 @@ import {
   detectLocalToolchain, describeToolchain, esp32BoardSupported, selfTestSandbox, formatSelfTest,
   validateCompileRequest, MAX_COMPILE_REQUEST_BYTES,
   type CompileRequest, type SandboxExecutor, type TrialCompileResult,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { JobManager, QueueClosedError, QueueFullError } from './jobs.js';
 import { FixedWindowRateLimiter } from './rate-limit.js';
 import { registerRetiredStaticPathGuard, setStaticHeaders } from './static-headers.js';
@@ -66,7 +66,7 @@ function localToolchainIdentityHint(): string | undefined {
   const configured = process.env.AF_LOCAL_TOOLCHAIN_IDENTITY?.trim();
   if (configured) return configured;
 
-  const hash = createHash('sha256').update('arduinofast-local-toolchain-v1\0');
+  const hash = createHash('sha256').update('sketchforge-local-toolchain-v1\0');
   const addPath = (label: string, path: string | undefined) => {
     hash.update(label).update('\0').update(path ?? 'not-configured').update('\0');
     if (!path) return;
@@ -710,7 +710,7 @@ process.once('SIGINT', () => { void shutdown('SIGINT'); });
 await app.listen({ port: PORT, host: HOST });
 
 console.log(`
-╭─ arduinofast 编译底座 ────────────────────────────────
+╭─ sketchforge 编译底座 ────────────────────────────────
 │ 监听    http://${HOST}:${PORT}
 │ 沙箱    ${executor.name} (${executor.isolationLevel})  自检: ${
   selfTest.skipped ? '⚠ 未隔离，仅限开发' : selfTest.ok ? '✓ 通过' : '✗ 未通过'

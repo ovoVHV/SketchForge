@@ -136,7 +136,7 @@ interface FetchOptions {
 
 function headers(opts: FetchOptions): Record<string, string> {
   const h: Record<string, string> = {
-    'User-Agent': 'arduinofast-library-importer',
+    'User-Agent': 'sketchforge-library-importer',
     Accept: 'application/vnd.github+json',
   };
   if (opts.token) h.Authorization = `Bearer ${opts.token}`;
@@ -193,7 +193,7 @@ export async function downloadArchive(
 ): Promise<Buffer> {
   const url = `https://codeload.github.com/${encodeURIComponent(ref.owner)}/${encodeURIComponent(ref.repo)}/tar.gz/${commit}`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'arduinofast-library-importer' },
+    headers: { 'User-Agent': 'sketchforge-library-importer' },
     redirect: 'manual',   // 直链不该跳转；跳转即异常
     signal: AbortSignal.timeout(opts.timeoutMs ?? 60_000),
   });

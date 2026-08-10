@@ -59,7 +59,7 @@ export class RedisCompileRateLimiter {
     this.globalLimit = options.globalLimit ?? 600;
     this.ipLimit = options.ipLimit ?? 120;
     this.visitorLimit = options.visitorLimit ?? 60;
-    this.keySalt = options.keySalt ?? 'arduinofast-public';
+    this.keySalt = options.keySalt ?? 'sketchforge-public';
     for (const [name, value] of [
       ['windowMs', this.windowMs],
       ['globalLimit', this.globalLimit],

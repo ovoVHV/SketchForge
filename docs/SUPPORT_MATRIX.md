@@ -1,10 +1,17 @@
 # Support Matrix / 支持矩阵
 
-This document describes the `v0.1.0-browser-preview` source boundary. It is a
-capability statement, not a promise that every Arduino library or menu option
-will compile.
+This document describes the `v0.1.0` browser release boundary. Rows marked
+`Supported target` are the targets the hosted browser workflow is prepared to
+compile and flash through Web Serial. It is a capability statement, not a
+promise that every Arduino library, processor option, or menu combination will
+compile.
 
 ## Browser route / 浏览器路径
+
+The browser route is the primary user workflow. Compilation runs in a browser
+Worker backed by WebAssembly, while flashing is performed by the user's
+browser after explicit serial permission. Large immutable runtime Packs are
+published separately from the source repository.
 
 | Family | Board | Status | Notes |
 | --- | --- | --- | --- |
@@ -25,6 +32,9 @@ will compile.
 
 - Browser support is limited by the selected board profile, compiler Pack,
   platform Pack, board Pack, browser memory, and library compatibility.
+- The hosted instance can compile and flash the supported rows today; a fresh
+  source clone must publish matching runtime assets before it has the same
+  browser coverage.
 - The source repository intentionally omits the large immutable runtime files.
   A hosted deployment may publish them separately only after completing its
   own provenance and license review.

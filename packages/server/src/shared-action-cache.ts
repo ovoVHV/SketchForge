@@ -4,7 +4,7 @@ import {
   type ActionCacheEntry,
   type ActionOutputBlob,
   type MappedBuildDiagnostic,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import type { Redis } from 'ioredis';
 
 const SHA256 = /^[a-f0-9]{64}$/;

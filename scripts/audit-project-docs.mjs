@@ -245,10 +245,10 @@ export async function auditProjectDocs({ root = ROOT, overrides = {} } = {}) {
     }
   };
   for (const [name, expected] of Object.entries({
-    dev: 'npm run dev:gateway --workspace @arduinofast/server',
-    start: 'npm run start:gateway --workspace @arduinofast/server',
-    'dev:monolith': 'npm run dev:monolith --workspace @arduinofast/server',
-    'start:monolith': 'npm run start:monolith --workspace @arduinofast/server',
+    dev: 'npm run dev:gateway --workspace @sketchforge/server',
+    start: 'npm run start:gateway --workspace @sketchforge/server',
+    'dev:monolith': 'npm run dev:monolith --workspace @sketchforge/server',
+    'start:monolith': 'npm run start:monolith --workspace @sketchforge/server',
   })) {
     requireScript(FILES.packageJson, packageJson, name, expected);
   }

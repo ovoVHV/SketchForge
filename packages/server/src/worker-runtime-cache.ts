@@ -23,7 +23,7 @@ export function workerRuntimeCacheNamespace(
     throw new Error('host runtime identity does not match compile release trust');
   }
   return createHash('sha256')
-    .update('arduinofast-worker-runtime-cache-v1\0')
+    .update('sketchforge-worker-runtime-cache-v1\0')
     .update(compilerBundleId)
     .update('\0')
     .update(compileReleaseId)

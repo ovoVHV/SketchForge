@@ -31,12 +31,20 @@ export const DEFAULT_DERIVED_CACHE_QUOTA: Readonly<DerivedCacheQuota> = Object.f
 
 const PRUNE_INTERVAL_MS = 30_000;
 const HANDOFF_GRACE_MS = 5_000;
-const READY_MARKER = '.arduinofast-ready';
+const READY_MARKER = '.sketchforge-ready';
+const LEGACY_READY_MARKER = '.arduinofast-ready';
 const READY_MARKER_CONTENT = 'ready\n';
 
 export function isDerivedCacheEntryReady(entryPath: string, artifacts: string[]): boolean {
   try {
-    if (readFileSync(join(entryPath, READY_MARKER), 'utf8') !== READY_MARKER_CONTENT) {
+    const ready = [READY_MARKER, LEGACY_READY_MARKER].some((marker) => {
+      try {
+        return readFileSync(join(entryPath, marker), 'utf8') === READY_MARKER_CONTENT;
+      } catch {
+        return false;
+      }
+    });
+    if (!ready) {
       return false;
     }
     return artifacts.every((artifact) => {

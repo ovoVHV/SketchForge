@@ -19,10 +19,10 @@ describe('server entrypoint contract', () => {
     const serverScripts = readPackage('packages/server/package.json').scripts;
 
     expect(rootScripts.dev).toBe(
-      'npm run dev:gateway --workspace @arduinofast/server',
+      'npm run dev:gateway --workspace @sketchforge/server',
     );
     expect(rootScripts.start).toBe(
-      'npm run start:gateway --workspace @arduinofast/server',
+      'npm run start:gateway --workspace @sketchforge/server',
     );
     expect(serverScripts.dev).toBe('tsx watch src/gateway.ts');
     expect(serverScripts['dev:gateway']).toBe('tsx watch src/gateway.ts');
@@ -35,10 +35,10 @@ describe('server entrypoint contract', () => {
     const serverScripts = readPackage('packages/server/package.json').scripts;
 
     expect(rootScripts['dev:monolith']).toBe(
-      'npm run dev:monolith --workspace @arduinofast/server',
+      'npm run dev:monolith --workspace @sketchforge/server',
     );
     expect(rootScripts['start:monolith']).toBe(
-      'npm run start:monolith --workspace @arduinofast/server',
+      'npm run start:monolith --workspace @sketchforge/server',
     );
     expect(serverScripts['dev:monolith']).toBe('tsx watch src/index.ts');
     expect(serverScripts['start:monolith']).toBe('node dist/index.js');

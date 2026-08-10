@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { GetObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { Artifact, CompileResult } from '@arduinofast/core';
+import type { Artifact, CompileResult } from '@sketchforge/core';
 import { prefixPublicPath } from './public-base-path.js';
 
 const SAFE_SHA256 = /^[a-f0-9]{64}$/;
@@ -724,7 +724,7 @@ export class S3ContentAddressedArtifactStore implements ArtifactStore {
     this.publicBaseUrl = normalizePublicBaseUrl(options.publicBaseUrl);
     this.presignExpiresSeconds = options.presignExpiresSeconds ?? 0;
     this.signer = options.signer ?? ((client, command, expiresIn) => getSignedUrl(client, command, { expiresIn }));
-    this.spoolDir = options.spoolDir ?? join(tmpdir(), 'arduinofast-artifact-spool');
+    this.spoolDir = options.spoolDir ?? join(tmpdir(), 'sketchforge-artifact-spool');
   }
 
   async externalize(result: CompileResult): Promise<CompileResult> {

@@ -20,12 +20,12 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { isSafeEsp32PrewarmCacheDir } from '@arduinofast/core';
+import { isSafeEsp32PrewarmCacheDir } from '@sketchforge/core';
 
 /** Legacy v1 marker. It is read for interruption recovery but never rewritten. */
-export const PREWARM_CACHE_SEED_STATE_FILE = '.arduinofast-prewarm-seed.json';
+export const LEGACY_PREWARM_CACHE_SEED_STATE_FILE = '.arduinofast-prewarm-seed.json';
 /** v2 keeps one atomic marker per immutable bundle/seed version. */
-export const PREWARM_CACHE_SEED_STATE_DIR = '.arduinofast-prewarm-seeds';
+export const PREWARM_CACHE_SEED_STATE_DIR = '.sketchforge-prewarm-seeds';
 const SEED_STATE_VERSION = 2;
 const DEFAULT_UNVERSIONED_SEED = 'unversioned-v2';
 const L0_CACHE_NAMESPACE = 'l0';
@@ -71,7 +71,7 @@ function resolvedSeedVersion(seedVersion: string | undefined, bundleId: string |
 
 function stateIdentity(bundleId: string | null, seedVersion: string): string {
   return createHash('sha256')
-    .update('arduinofast-prewarm-seed-state-v2\0')
+    .update('sketchforge-prewarm-seed-state-v2\0')
     .update(bundleId ?? '')
     .update('\0')
     .update(seedVersion)
@@ -150,7 +150,7 @@ function readSeedState(path: string, bundleId: string | null, seedVersion: strin
 
 function readLegacySeedState(cacheDir: string, bundleId: string | null): LegacySeedState | null {
   try {
-    const path = join(cacheDir, PREWARM_CACHE_SEED_STATE_FILE);
+    const path = join(cacheDir, LEGACY_PREWARM_CACHE_SEED_STATE_FILE);
     const stat = lstatSync(path);
     if (!stat.isFile() || stat.isSymbolicLink()) return null;
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<LegacySeedState>;
@@ -173,7 +173,7 @@ function readLegacySeedState(cacheDir: string, bundleId: string | null): LegacyS
 
 function cacheHasData(cacheDir: string): boolean {
   return readdirSync(cacheDir).some((entry) => (
-    entry !== PREWARM_CACHE_SEED_STATE_FILE
+    entry !== LEGACY_PREWARM_CACHE_SEED_STATE_FILE
     && entry !== PREWARM_CACHE_SEED_STATE_DIR
   ));
 }
@@ -206,7 +206,7 @@ function copyEntryIfMissing(source: string, destination: string): boolean {
 
   const temporary = join(
     dirname(destination),
-    `.arduinofast-prewarm-copy.${process.pid}.${randomUUID()}.tmp`,
+    `.sketchforge-prewarm-copy.${process.pid}.${randomUUID()}.tmp`,
   );
   const sourceStat = lstatSync(source);
   try {
@@ -282,7 +282,7 @@ function mergeDirectoryChildren(source: string, destination: string, depth: numb
 function mergeSeedContents(seedDir: string, cacheDir: string): number {
   let copied = 0;
   for (const entry of readdirSync(seedDir)) {
-    if (entry === PREWARM_CACHE_SEED_STATE_FILE || entry === PREWARM_CACHE_SEED_STATE_DIR) {
+    if (entry === LEGACY_PREWARM_CACHE_SEED_STATE_FILE || entry === PREWARM_CACHE_SEED_STATE_DIR) {
       continue;
     }
     const source = join(seedDir, entry);

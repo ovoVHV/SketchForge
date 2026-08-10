@@ -26,7 +26,7 @@ import {
   writeBlocksMetadata,
   type CompileEvent,
   type CompileRequest,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { createArtifactStore } from './artifact-store.js';
 import { registerArtifactDownloadRoute } from './artifact-download.js';
 import { listWorkerCapabilities, type WorkerCapability } from './capabilities.js';
@@ -90,7 +90,7 @@ if (BROWSER_ONLY_MODE && !IS_PRODUCTION) {
 const port = positiveInt('PORT', 3000);
 const host = process.env.HOST ?? '127.0.0.1';
 const bundleId = process.env.AF_COMPILER_BUNDLE_ID ?? 'development';
-const queuePrefix = process.env.AF_QUEUE_PREFIX ?? 'arduinofast-compile';
+const queuePrefix = process.env.AF_QUEUE_PREFIX ?? 'sketchforge-compile';
 const runtimeConfiguration = loadCompilerRuntimeConfiguration(
   process.env,
   bundleId,
@@ -183,7 +183,7 @@ const rateLimiter = new RedisCompileRateLimiter(redis, {
   globalLimit: positiveInt('AF_COMPILE_GLOBAL_RATE', 600),
   ipLimit: positiveInt('AF_COMPILE_IP_RATE', 120),
   visitorLimit: positiveInt('AF_COMPILE_VISITOR_RATE', 60),
-  keySalt: process.env.AF_RATE_KEY_SALT ?? 'arduinofast-public',
+  keySalt: process.env.AF_RATE_KEY_SALT ?? 'sketchforge-public',
 });
 const maxLibraryImports = positiveInt('AF_MAX_LIBRARY_IMPORTS', 2);
 let libraryImports = 0;
@@ -216,7 +216,7 @@ async function capabilities(): Promise<WorkerCapability[]> {
 function namespacedFingerprint(request: CompileRequest): { hash: string; reusable: boolean } {
   const fingerprint = fingerprintCompileRequest(request);
   const hash = createHash('sha256')
-    .update('arduinofast-job-v1\0')
+    .update('sketchforge-job-v1\0')
     .update(bundleId)
     .update('\0')
     .update(runtimeConfiguration.releaseId)
@@ -773,7 +773,7 @@ process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
 process.once('SIGINT', () => { void shutdown('SIGINT'); });
 
 await app.listen({ port, host });
-console.log(`arduinofast distributed gateway listening on http://${host}:${port}`);
+console.log(`sketchforge distributed gateway listening on http://${host}:${port}`);
 }
 
 const gatewayEntryPath = process.argv[1] ? resolve(process.argv[1]) : '';

@@ -4,7 +4,10 @@ import {
   ACTIVE_COMPILE_DB_NAME,
   ACTIVE_COMPILE_DB_VERSION,
   ACTIVE_COMPILE_RECORD_KEY,
+  ACTIVE_COMPILE_STORAGE_KEY,
   ACTIVE_COMPILE_STORE_NAME,
+  LEGACY_ACTIVE_COMPILE_DB_NAME,
+  LEGACY_ACTIVE_COMPILE_TAB_ID_KEY,
   LEGACY_ACTIVE_COMPILE_STORAGE_KEY,
   activeCompileRecordKey,
   activeCompileTabId,
@@ -205,6 +208,16 @@ describe('IndexedDB active compile persistence', () => {
     expect(created).toBe(1);
   });
 
+  it('migrates a legacy tab ID into the current tab key', () => {
+    const storage = memoryStorage({
+      [LEGACY_ACTIVE_COMPILE_TAB_ID_KEY]: 'legacy-tab',
+    });
+
+    expect(activeCompileTabId(storage)).toBe('legacy-tab');
+    expect(storage.values.get('sketchforge.active-compile.tab.v1')).toBe('legacy-tab');
+    expect(storage.values.has(LEGACY_ACTIVE_COMPILE_TAB_ID_KEY)).toBe(false);
+  });
+
   it('uses the declared IndexedDB schema and atomic replace/delete policy', async () => {
     const fake = fakeIndexedDb();
     const store = createIndexedDbActiveCompileStore(fake.factory as any);
@@ -239,6 +252,21 @@ describe('IndexedDB active compile persistence', () => {
       keyPath: 'key',
     });
     expect(fake.rows.has(ACTIVE_COMPILE_RECORD_KEY)).toBe(false);
+  });
+
+  it('opens the renamed and legacy IndexedDB namespaces separately', async () => {
+    const fake = fakeIndexedDb();
+    const current = createIndexedDbActiveCompileStore(fake.factory as any);
+    const legacy = createIndexedDbActiveCompileStore(
+      fake.factory as any,
+      ACTIVE_COMPILE_RECORD_KEY,
+      LEGACY_ACTIVE_COMPILE_DB_NAME,
+    );
+
+    await legacy.put(compileRecord('legacy-db-job', 3));
+    await expect(legacy.get()).resolves.toMatchObject({ jobId: 'legacy-db-job' });
+    await expect(current.get()).resolves.toBeNull();
+    expect(fake.metadata.name).toBe(LEGACY_ACTIVE_COMPILE_DB_NAME);
   });
 
   it('stores a record larger than 2 MiB without writing the payload to Web Storage', async () => {
@@ -292,6 +320,30 @@ describe('IndexedDB active compile persistence', () => {
     expect(local.removes).toHaveLength(1);
   });
 
+  it('reads an old fallback key and writes only the current fallback key when durable storage fails', async () => {
+    const legacy = compileRecord('legacy-fallback-job', 21);
+    const session = memoryStorage({
+      [LEGACY_ACTIVE_COMPILE_STORAGE_KEY]: JSON.stringify(legacy),
+    });
+    const durableError = new Error('IndexedDB blocked');
+    const durable = {
+      async get() { throw durableError; },
+      async put() { throw durableError; },
+      async deleteIfJobId() { throw durableError; },
+    };
+    const persistence = createActiveCompilePersistence({
+      durable,
+      fallbackStorage: session,
+      legacyStorages: [session],
+      now: () => 220,
+    });
+
+    await expect(persistence.load()).resolves.toMatchObject({ jobId: 'legacy-fallback-job' });
+    expect(session.writes.map(({ key }) => key)).toContain(ACTIVE_COMPILE_STORAGE_KEY);
+    expect(session.values.has(LEGACY_ACTIVE_COMPILE_STORAGE_KEY)).toBe(false);
+    expect(session.values.has(ACTIVE_COMPILE_STORAGE_KEY)).toBe(true);
+  });
+
   it('falls back to sessionStorage when IndexedDB fails and reports the loss of durability', async () => {
     const error = new Error('IndexedDB blocked');
     const durable = {
@@ -315,7 +367,7 @@ describe('IndexedDB active compile persistence', () => {
       durable: false,
       error,
     });
-    expect(session.values.has(LEGACY_ACTIVE_COMPILE_STORAGE_KEY)).toBe(true);
+    expect(session.values.has(ACTIVE_COMPILE_STORAGE_KEY)).toBe(true);
     expect(logger.warn).toHaveBeenCalled();
     expect(statuses.at(-1)).toMatchObject({ operation: 'put', persistence: 'session' });
 
@@ -408,7 +460,7 @@ describe('IndexedDB active compile persistence', () => {
 
     await expect(persistence.load()).resolves.toMatchObject({ jobId: 'job-b' });
     expect(durable.current?.jobId).toBe('job-b');
-    expect(session.values.has(LEGACY_ACTIVE_COMPILE_STORAGE_KEY)).toBe(false);
+    expect(session.values.has(ACTIVE_COMPILE_STORAGE_KEY)).toBe(false);
   });
 
   it('discards a stale async load when a newer accepted job arrives', async () => {

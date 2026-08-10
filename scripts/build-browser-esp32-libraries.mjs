@@ -476,7 +476,7 @@ export function parseBrowserEsp32LibraryBuildArgs(argv) {
 
 async function acquireSource(definition, sourceRoot) {
   if (sourceRoot) return { root: sourceRoot, cleanup() {} };
-  const temporary = mkdtempSync(join(tmpdir(), `arduinofast-${definition.key}-`));
+  const temporary = mkdtempSync(join(tmpdir(), `sketchforge-${definition.key}-`));
   try {
     const response = await fetch(definition.archiveUrl);
     if (!response.ok) throw new Error(`${definition.name} archive returned HTTP ${response.status}`);

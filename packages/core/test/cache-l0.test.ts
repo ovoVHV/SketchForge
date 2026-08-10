@@ -15,7 +15,7 @@ import { FileL0Cache, type CachedEntry } from '../src/cache/l0.js';
 const temporaryDirectories: string[] = [];
 
 function makeTempDirectory(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'arduinofast-l0-'));
+  const dir = mkdtempSync(join(tmpdir(), 'sketchforge-l0-'));
   temporaryDirectories.push(dir);
   return dir;
 }

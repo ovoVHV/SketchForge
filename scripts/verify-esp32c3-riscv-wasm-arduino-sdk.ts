@@ -43,7 +43,7 @@ import { NodeWebSerialPort } from './node-web-serial-port.mjs';
 
 const FQBN = 'esp32:esp32:esp32c3';
 const EXPECTED_SDK_VERSION = '3.3.7';
-const EXPECTED_PACKAGE = '@arduinofast/esp32c3-clang-wasm';
+const EXPECTED_PACKAGE = '@sketchforge/esp32c3-clang-wasm';
 const ARDUINO_VERSION_DEFINE = '10607';
 const MAX_COMMAND_OUTPUT = 4 * 1024 * 1024;
 const MAX_COMPILER_OUTPUT = 256 * 1024;
@@ -739,7 +739,7 @@ function installCandidate(artifactDirectory: string): InstalledCandidate {
       '--no-bin-links',
       tarball,
     ], { cwd: installRoot, encoding: 'utf8', windowsHide: true, maxBuffer: MAX_COMMAND_OUTPUT });
-    const packageDirectory = join(installRoot, 'node_modules', '@arduinofast', 'esp32c3-clang-wasm');
+    const packageDirectory = join(installRoot, 'node_modules', '@sketchforge', 'esp32c3-clang-wasm');
     requireDirectory(packageDirectory, 'installed ESP32-C3 WASM compiler package');
     return Object.freeze({
       packageDirectory,

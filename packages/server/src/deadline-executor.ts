@@ -9,7 +9,7 @@ import {
   type ExecResult,
   type InterruptionReason,
   type SandboxExecutor,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 
 /** One abort signal and one absolute clock shared by every stage of a job. */
 export class JobDeadline implements DeadlineOptions {
@@ -116,7 +116,7 @@ export class JobDeadlineExecutor implements SandboxExecutor {
         code: null,
         signal: null,
         stdout: '',
-        stderr: '[arduinofast] compile job wall-clock deadline exceeded',
+        stderr: '[sketchforge] compile job wall-clock deadline exceeded',
         durationMs: 0,
         timedOut: true,
         truncated: false,

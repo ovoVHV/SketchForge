@@ -88,7 +88,7 @@ function validatePatch(value) {
   if (
     !value.includes('diff --git a/npmjs/package-in.json b/npmjs/package-in.json')
     || !value.includes('-    "name": "@yowasp/clang"')
-    || !value.includes('+    "name": "@arduinofast/esp32c3-clang-wasm"')
+    || !value.includes('+    "name": "@sketchforge/esp32c3-clang-wasm"')
   ) throw new Error('ESP32-C3 RISC-V WASM patch must use a distinct experimental package name');
 }
 

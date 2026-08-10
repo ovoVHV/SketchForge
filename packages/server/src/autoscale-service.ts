@@ -67,7 +67,7 @@ function loadConfig(env: NodeJS.ProcessEnv): AutoscaleServiceConfig {
     env.NODE_ENV === 'production',
   );
   const namespace = createCompileRedisNamespace(
-    env.AF_QUEUE_PREFIX ?? 'arduinofast-compile',
+    env.AF_QUEUE_PREFIX ?? 'sketchforge-compile',
     bundleId,
     runtimeConfiguration.releaseId,
   );

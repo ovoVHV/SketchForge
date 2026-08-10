@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import {
   validatePlatformManifest,
   type CKPlatformManifest,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const IDENTIFIER = /^[a-z][a-z0-9._-]{0,63}$/;

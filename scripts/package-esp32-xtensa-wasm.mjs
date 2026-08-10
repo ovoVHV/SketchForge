@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const PACKAGE_NAME = '@arduinofast/esp32-xtensa-clang-wasm';
+export const PACKAGE_NAME = '@sketchforge/esp32-xtensa-clang-wasm';
 export const EXPECTED_PACKAGE_FILES = Object.freeze([
   'LICENSE.txt',
   'README.md',
@@ -249,7 +249,7 @@ export function validateTemplateContract() {
   ]) requireRegularFile(join(TEMPLATE_DIRECTORY, relativePath), `package template ${relativePath}`);
 
   const builder = readJson(join(TEMPLATE_DIRECTORY, 'package.json'), 'builder package manifest');
-  if (builder.private !== true || builder.name !== '@arduinofast/esp32-xtensa-wasm-packager') {
+  if (builder.private !== true || builder.name !== '@sketchforge/esp32-xtensa-wasm-packager') {
     throw new Error('Xtensa package builder manifest has an unexpected identity');
   }
   if (JSON.stringify(builder.devDependencies) !== JSON.stringify(PINNED_BUILD_DEPENDENCIES)) {
@@ -291,7 +291,7 @@ async function buildPackage(plan) {
   ensureOutputHasNoTarballs(plan.outputDirectory);
   const ownsWorkDirectory = plan.workDirectory === null;
   const workDirectory = ownsWorkDirectory
-    ? mkdtempSync(join(tmpdir(), 'arduinofast-esp32-xtensa-package-'))
+    ? mkdtempSync(join(tmpdir(), 'sketchforge-esp32-xtensa-package-'))
     : plan.workDirectory;
   if (!ownsWorkDirectory) ensureEmptyDirectory(workDirectory, 'work directory');
   const stage = join(workDirectory, 'npm-package');

@@ -5,5 +5,5 @@ Espressif LLVM source, wasi-libc resources, and bundled `@yowasp/runtime`
 implementation retain their upstream license texts under `licenses/`.
 
 The compiler may contain local WASI-host compatibility changes. Source
-revision and patch provenance are recorded by the accompanying ArduinoFast
+revision and patch provenance are recorded by the accompanying SketchForge
 toolchain source lock and release metadata, outside this generated npm tgz.

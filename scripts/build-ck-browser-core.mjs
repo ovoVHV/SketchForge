@@ -16,22 +16,22 @@ const targets = [
   {
     entryPoint: resolve(workspace, 'packages/core/src/build-ir/platform-planning.ts'),
     outfile: resolve(workspace, 'packages/web/public/ck-platform-planning.js'),
-    banner: '// Generated from @arduinofast/core platform-planning. Do not maintain a browser-specific planner.',
+    banner: '// Generated from @sketchforge/core platform-planning. Do not maintain a browser-specific planner.',
   },
   {
     entryPoint: resolve(workspace, 'packages/core/src/esp32/custom-partitions.ts'),
     outfile: resolve(workspace, 'packages/web/public/ck-esp32-partitions.js'),
-    banner: '// Generated from @arduinofast/core ESP32 custom partitions. Browser and Native share one implementation.',
+    banner: '// Generated from @sketchforge/core ESP32 custom partitions. Browser and Native share one implementation.',
   },
   {
     entryPoint: resolve(workspace, 'packages/core/src/blocks/generator.ts'),
     outfile: resolve(workspace, 'packages/web/public/ck-blockly-generator.js'),
-    banner: '// Generated from @arduinofast/core blocks generator. Do not maintain browser-only code generation.',
+    banner: '// Generated from @sketchforge/core blocks generator. Do not maintain browser-only code generation.',
   },
   {
     entryPoint: resolve(workspace, 'packages/core/src/firmware/index.ts'),
     outfile: resolve(workspace, 'packages/web/public/ck-firmware-patch.js'),
-    banner: '// Generated from @arduinofast/core firmware patching. Browser and test code share one implementation.',
+    banner: '// Generated from @sketchforge/core firmware patching. Browser and test code share one implementation.',
   },
 ];
 

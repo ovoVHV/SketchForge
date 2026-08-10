@@ -101,7 +101,7 @@ describe('app P1 workflow wiring', () => {
     expect(persistProject).toMatch(/saveProjectState\(projectStateStorage,/);
     expect(persistProject).not.toMatch(/legacyProjectStateStorage/);
     expect(init).toMatch(
-      /loadProjectState\(projectStateStorage\)\s*\?\?\s*loadProjectState\(legacyProjectStateStorage\)/,
+      /loadProjectState\(projectStateStorage\)\s*\?\?\s*loadProjectState\(legacyProjectStateStorage,\s*\{\s*migrationStorage:\s*projectStateStorage\s*\}\)/,
     );
   });
 

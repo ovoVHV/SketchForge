@@ -31,7 +31,7 @@ void setup() {
   Serial.begin(9600);
   delay(200);
   Serial.println();
-  Serial.println(F("== arduinofast =="));
+  Serial.println(F("== SketchForge =="));
   Serial.println(F("firmware flashed from a browser tab"));
   Serial.println(F("no IDE, no driver, no arduino-cli"));
   Serial.println();

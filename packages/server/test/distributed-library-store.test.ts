@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LibraryStore } from '@arduinofast/core';
+import { LibraryStore } from '@sketchforge/core';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
@@ -91,7 +91,7 @@ describe('distributed LibraryStore deployment contract', () => {
       const source = readRepoFile(dockerfile);
       expect(source).toContain('AF_LIBRARY_STORE_DIR=/var/aflibraries');
       expect(source).toMatch(
-        /install -d -o arduinofast -g arduinofast -m 0750[\s\S]{1,200}\/var\/aflibraries/,
+        /install -d -o sketchforge -g sketchforge -m 0750[\s\S]{1,200}\/var\/aflibraries/,
       );
       expect(source).toContain('USER 10001:10001');
     }
@@ -117,7 +117,7 @@ describe('distributed LibraryStore deployment contract', () => {
   });
 
   it('makes a gateway import visible after worker reload without rewriting the index', () => {
-    const root = mkdtempSync(join(tmpdir(), 'arduinofast-shared-library-store-'));
+    const root = mkdtempSync(join(tmpdir(), 'sketchforge-shared-library-store-'));
     temporaryRoots.push(root);
     const workerReader = new LibraryStore(root);
     const gatewayWriter = new LibraryStore(root);

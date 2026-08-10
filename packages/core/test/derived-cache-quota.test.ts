@@ -94,6 +94,17 @@ describe('derived cache completion markers', () => {
     expect(isDerivedCacheEntryReady(entry, [archive])).toBe(false);
   });
 
+  it('accepts the legacy ready marker when upgrading an existing cache', () => {
+    const root = tempRoot();
+    const entry = join(root, 'cores', 'legacy-entry');
+    const archive = join(entry, 'core.a');
+    mkdirSync(entry, { recursive: true });
+    writeFileSync(archive, 'archive', 'utf8');
+    writeFileSync(join(entry, '.arduinofast-ready'), 'ready\n');
+
+    expect(isDerivedCacheEntryReady(entry, [archive])).toBe(true);
+  });
+
   it('discards incomplete entries without surfacing cleanup errors', () => {
     const root = tempRoot();
     const entry = cacheEntry(root, 'libs', 'partial', 10, Date.now());

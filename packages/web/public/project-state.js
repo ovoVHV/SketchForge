@@ -4,7 +4,8 @@ import {
 } from './project-files.js';
 
 export const PROJECT_STATE_SCHEMA_VERSION = 2;
-export const PROJECT_STATE_STORAGE_KEY = 'arduinofast.project.v2';
+export const PROJECT_STATE_STORAGE_KEY = 'sketchforge.project.v2';
+export const LEGACY_PROJECT_STATE_STORAGE_KEY = 'arduinofast.project.v2';
 export const LEGACY_PROJECT_STORAGE_KEY = 'arduinofast.project.v1';
 export const LEGACY_LIBRARY_STORAGE_KEY = 'arduinofast.library-selection.v1';
 
@@ -101,6 +102,28 @@ function readJson(storage, key) {
   }
 }
 
+function writeCurrentProjectState(storage, normalized) {
+  if (typeof storage?.setItem !== 'function') return false;
+  try {
+    storage.setItem(PROJECT_STATE_STORAGE_KEY, JSON.stringify(normalized));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeStorageKeys(storage, keys) {
+  if (typeof storage?.removeItem !== 'function') return;
+  for (const key of keys) {
+    try { storage.removeItem(key); } catch { /* best effort cleanup */ }
+  }
+}
+
+function migrateProjectState(storage, migrationStorage, normalized, sourceKeys) {
+  if (writeCurrentProjectState(migrationStorage, normalized)) removeStorageKeys(storage, sourceKeys);
+  return normalized;
+}
+
 export function normalizeProjectState(value) {
   if (!isRecord(value) || value.schemaVersion !== PROJECT_STATE_SCHEMA_VERSION) return null;
   if (!Object.hasOwn(value, 'board') || !Object.hasOwn(value, 'options') || !Object.hasOwn(value, 'libraries')) {
@@ -109,20 +132,45 @@ export function normalizeProjectState(value) {
   return normalizeState(value);
 }
 
-export function loadProjectState(storage) {
+export function loadProjectState(storage, { migrationStorage = storage } = {}) {
   const current = readJson(storage, PROJECT_STATE_STORAGE_KEY);
   if (current.present) {
     const normalized = normalizeProjectState(current.value);
-    if (normalized) return normalized;
+    if (normalized) {
+      return migrationStorage === storage
+        ? normalized
+        : migrateProjectState(storage, migrationStorage, normalized, [PROJECT_STATE_STORAGE_KEY]);
+    }
+  }
+
+  const legacyState = readJson(storage, LEGACY_PROJECT_STATE_STORAGE_KEY);
+  if (legacyState.present) {
+    const normalized = normalizeProjectState(legacyState.value);
+    if (normalized) {
+      return migrateProjectState(
+        storage,
+        migrationStorage,
+        normalized,
+        [LEGACY_PROJECT_STATE_STORAGE_KEY],
+      );
+    }
   }
 
   const legacyProject = readJson(storage, LEGACY_PROJECT_STORAGE_KEY);
   if (!legacyProject.present || !isRecord(legacyProject.value)) return null;
   if (Object.hasOwn(legacyProject.value, 'schemaVersion') && legacyProject.value.schemaVersion !== 1) return null;
   const legacyLibraries = readJson(storage, LEGACY_LIBRARY_STORAGE_KEY);
-  return normalizeState(legacyProject.value, {
+  const normalized = normalizeState(legacyProject.value, {
     legacyLibraries: Array.isArray(legacyLibraries.value) ? legacyLibraries.value : [],
   });
+  return normalized
+    ? migrateProjectState(
+      storage,
+      migrationStorage,
+      normalized,
+      [LEGACY_PROJECT_STORAGE_KEY, LEGACY_LIBRARY_STORAGE_KEY],
+    )
+    : null;
 }
 
 export function saveProjectState(storage, value) {
@@ -133,10 +181,5 @@ export function saveProjectState(storage, value) {
     return false;
   }
   if (!normalized) return false;
-  try {
-    storage?.setItem?.(PROJECT_STATE_STORAGE_KEY, JSON.stringify(normalized));
-    return typeof storage?.setItem === 'function';
-  } catch {
-    return false;
-  }
+  return writeCurrentProjectState(storage, normalized);
 }

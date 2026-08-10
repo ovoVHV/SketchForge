@@ -313,7 +313,7 @@ describe('real Chromium ESP32-C3 Worker smoke harness', () => {
   });
 
   it('loads the target-specific board file and rejects an FQBN mismatch', () => {
-    const root = mkdtempSync(join(tmpdir(), 'arduinofast-flash-board-test-'));
+    const root = mkdtempSync(join(tmpdir(), 'sketchforge-flash-board-test-'));
     temporaryDirectories.push(root);
     mkdirSync(join(root, 'boards'));
     const target = parseArgs(['--board', 'esp32', '--marker', marker], { cwd: root }).target;
@@ -326,7 +326,7 @@ describe('real Chromium ESP32-C3 Worker smoke harness', () => {
   });
 
   it('serves Xtensa Clang glue from the selected runtime instead of the public fallback', () => {
-    const root = mkdtempSync(join(tmpdir(), 'arduinofast-worker-route-test-'));
+    const root = mkdtempSync(join(tmpdir(), 'sketchforge-worker-route-test-'));
     temporaryDirectories.push(root);
     const webRoot = join(root, 'public');
     const runtimeDir = join(root, 'runtime');
@@ -343,7 +343,7 @@ describe('real Chromium ESP32-C3 Worker smoke harness', () => {
   });
 
   it('writes compare-ready artifacts, source, hashes, and a manifest without overwriting', () => {
-    const root = mkdtempSync(join(tmpdir(), 'arduinofast-worker-test-'));
+    const root = mkdtempSync(join(tmpdir(), 'sketchforge-worker-test-'));
     temporaryDirectories.push(root);
     const outputDir = join(root, 'output');
     const completion = validateWorkerCompletion(completionPayload(), { marker });

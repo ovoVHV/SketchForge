@@ -1,4 +1,4 @@
-// Generated from @arduinofast/core ESP32 custom partitions. Browser and Native share one implementation.
+// Generated from @sketchforge/core ESP32 custom partitions. Browser and Native share one implementation.
 
 // packages/core/src/build-ir/canonical.ts
 function canonicalJson(value) {

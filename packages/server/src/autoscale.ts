@@ -291,7 +291,7 @@ export class AutoscaleWebhookAdapter {
           authorization: `Bearer ${this.token}`,
           'content-type': 'application/json',
           'idempotency-key': decision.decisionId,
-          'x-arduinofast-decision-id': decision.decisionId,
+          'x-sketchforge-decision-id': decision.decisionId,
         },
         body: JSON.stringify(decision),
       });

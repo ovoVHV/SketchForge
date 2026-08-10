@@ -1,5 +1,5 @@
 {
-  "name": "@arduinofast/esp32-xtensa-clang-wasm",
+  "name": "@sketchforge/esp32-xtensa-clang-wasm",
   "version": "__VERSION__",
   "description": "WASI-hosted Espressif LLVM/Clang/LLD toolchain targeting ESP32 Xtensa",
   "license": "ISC",

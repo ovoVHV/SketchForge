@@ -408,7 +408,7 @@ describe('gateway static release Docker contract', () => {
   });
 
   it('copies only manifest-listed files into Gateway static staging', () => {
-    const temporary = mkdtempSync(join(tmpdir(), 'arduinofast-gateway-static-'));
+    const temporary = mkdtempSync(join(tmpdir(), 'sketchforge-gateway-static-'));
     const source = join(temporary, 'source');
     const output = join(temporary, 'output');
     try {
@@ -477,7 +477,7 @@ describe('gateway static release Docker contract', () => {
   });
 
   it('binds dynamic Worker and import sites to source-checked declarations', () => {
-    const temporary = mkdtempSync(join(tmpdir(), 'arduinofast-gateway-modules-'));
+    const temporary = mkdtempSync(join(tmpdir(), 'sketchforge-gateway-modules-'));
     const publicRoot = join(temporary, 'public');
     try {
       mkdirSync(publicRoot, { recursive: true });
@@ -566,7 +566,7 @@ describe('gateway static release Docker contract', () => {
   });
 
   it('rejects repository, public, and staging roots that are links or junctions', async () => {
-    const temporary = mkdtempSync(join(tmpdir(), 'arduinofast-gateway-links-'));
+    const temporary = mkdtempSync(join(tmpdir(), 'sketchforge-gateway-links-'));
     const repositoryLink = join(temporary, 'repository-link');
     const source = join(temporary, 'source');
     const publicLink = join(temporary, 'public-link');

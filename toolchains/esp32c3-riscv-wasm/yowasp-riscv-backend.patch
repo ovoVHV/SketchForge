@@ -27,7 +27,7 @@ index 0e62da3..a67e435 100644
 @@ -1,7 +1,7 @@
  {
 -    "name": "@yowasp/clang",
-+    "name": "@arduinofast/esp32c3-clang-wasm",
++    "name": "@sketchforge/esp32c3-clang-wasm",
      "version": "__VERSION__",
 -    "description": "LLVM/Clang/LLD toolchain targeting WebAssembly",
 +    "description": "Experimental WASI-hosted LLVM/Clang/LLD toolchain targeting ESP32-C3 RISC-V",

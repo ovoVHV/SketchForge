@@ -3,8 +3,11 @@ import {
   normalizeProjectState,
 } from './project-state.js';
 
-export const PROJECT_ARCHIVE_FORMAT = 'arduinofast-project';
+export const PROJECT_ARCHIVE_FORMAT = 'sketchforge-project';
+export const LEGACY_PROJECT_ARCHIVE_FORMAT = 'arduinofast-project';
 export const PROJECT_ARCHIVE_VERSION = 1;
+export const PROJECT_ARCHIVE_EXTENSION = '.sketchforge.json';
+export const LEGACY_PROJECT_ARCHIVE_EXTENSION = '.arduinofast.json';
 export const MAX_PROJECT_ARCHIVE_BYTES = 8 * 1024 * 1024;
 
 export function encodeProjectArchive(value) {
@@ -31,7 +34,8 @@ export function decodeProjectArchive(text) {
   } catch {
     throw new Error('project archive is not valid JSON');
   }
-  if (archive?.format !== PROJECT_ARCHIVE_FORMAT || archive?.version !== PROJECT_ARCHIVE_VERSION) {
+  if (![PROJECT_ARCHIVE_FORMAT, LEGACY_PROJECT_ARCHIVE_FORMAT].includes(archive?.format)
+    || archive?.version !== PROJECT_ARCHIVE_VERSION) {
     throw new Error('unsupported project archive format');
   }
   const project = normalizeProjectState(archive.project);
@@ -50,5 +54,5 @@ export function safeDownloadFilename(value, fallback = 'project') {
 }
 
 export function projectArchiveFilename(value) {
-  return `${safeDownloadFilename(value)}.arduinofast.json`;
+  return `${safeDownloadFilename(value)}${PROJECT_ARCHIVE_EXTENSION}`;
 }

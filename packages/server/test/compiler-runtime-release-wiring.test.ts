@@ -88,7 +88,7 @@ describe('production compiler runtime release wiring', () => {
     }
     expect(compose.match(/AF_HOST_RUNTIME_IDENTITY:/g)).toHaveLength(3);
     expect(compose).toContain('AF_COMPILE_RELEASE_ID: "${AF_COMPILE_RELEASE_ID:?');
-    expect(compose).toContain('target: /run/arduinofast/compiler-runtime-release.json');
+    expect(compose).toContain('target: /run/sketchforge/compiler-runtime-release.json');
     expect(compose).toContain('read_only: true');
     expect(compose).not.toMatch(/worker-(?:avr|esp32-(?:xtensa|riscv)):[A-Za-z0-9]/);
     for (const dockerfile of [
@@ -96,7 +96,7 @@ describe('production compiler runtime release wiring', () => {
       'docker/Dockerfile.worker-avr',
       'docker/Dockerfile.worker-esp32',
     ]) {
-      expect(read(dockerfile)).toContain('/run/arduinofast');
+      expect(read(dockerfile)).toContain('/run/sketchforge');
     }
   });
 
@@ -121,8 +121,8 @@ describe('production compiler runtime release wiring', () => {
     expect(compose).toContain('read_only: true');
     expect(compose).not.toMatch(/^\s{2}(?:autoscaler|worker-[a-z0-9-]+):/m);
 
-    expect(envExample).toContain('AF_TOOLCHAIN_ORIGINS_FILE=/srv/arduinofast/toolchain-origins.js');
-    expect(originsExample).toContain('__ARDUINOFAST_TOOLCHAIN_ORIGINS__');
+    expect(envExample).toContain('AF_TOOLCHAIN_ORIGINS_FILE=/srv/sketchforge/toolchain-origins.js');
+    expect(originsExample).toContain('__SKETCHFORGE_TOOLCHAIN_ORIGINS__');
     expect(prefetch).toContain('docker pull --platform linux/amd64 redis:7.4.2-alpine');
     expect(prefetch).toContain('docker pull --platform linux/amd64 "$GATEWAY_IMAGE"');
     expect(prefetch).not.toContain('docker compose');
@@ -153,16 +153,16 @@ describe('production compiler runtime release wiring', () => {
     expect(deploy).toContain('EXPECTED_GATEWAY_IMAGE="$GATEWAY_IMAGE"');
     expect(deploy).toContain('rendered Gateway/Autoscaler digest contract failed');
     expect(deploy).toContain('rendered worker digest/identity contract failed');
-    expect(deploy).not.toContain("GATEWAY_IMAGE='arduinofast/gateway:production-v2'");
-    expect(deploy).not.toContain("require_image 'arduinofast/worker-avr:production-v2'");
+    expect(deploy).not.toContain("GATEWAY_IMAGE='sketchforge/gateway:production-v2'");
+    expect(deploy).not.toContain("require_image 'sketchforge/worker-avr:production-v2'");
   });
 
   it('documents the complete digest-only production input contract', () => {
     const example = read('docker/deploy.production.env.example');
     const prefetch = read('docker/prefetch-distributed-images.sh');
     const readme = read('README.md');
-    expect(example).toContain('AF_GATEWAY_IMAGE=ghcr.io/your-org/arduinofast-gateway@sha256:');
-    expect(example).toContain('AF_COMPILER_RUNTIME_RELEASE_FILE=/srv/arduinofast/compiler-runtime-release.json');
+    expect(example).toContain('AF_GATEWAY_IMAGE=ghcr.io/your-org/sketchforge-gateway@sha256:');
+    expect(example).toContain('AF_COMPILER_RUNTIME_RELEASE_FILE=/srv/sketchforge/compiler-runtime-release.json');
     expect(example).not.toMatch(/^AF_ACK_HOST_ISOLATION=/m);
     expect(example).not.toMatch(/^AF_ACK_DUAL_ESP32=/m);
     expect(readme).toContain('gateway-image-release/gateway-image.env');

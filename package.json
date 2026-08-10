@@ -1,16 +1,16 @@
 {
-  "name": "arduinofast",
+  "name": "sketchforge",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
-  "description": "网页版 Arduino 编译底座 — 图形化编程平台的编译层",
-  "homepage": "https://github.com/ovoVHV/ArduinoFast#readme",
+  "description": "Browser-first Arduino editor with in-browser compilation and Web Serial flashing",
+  "homepage": "https://github.com/ovoVHV/SketchForge#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ovoVHV/ArduinoFast.git"
+    "url": "git+https://github.com/ovoVHV/SketchForge.git"
   },
   "bugs": {
-    "url": "https://github.com/ovoVHV/ArduinoFast/issues"
+    "url": "https://github.com/ovoVHV/SketchForge/issues"
   },
   "workspaces": [
     "packages/*"
@@ -85,10 +85,10 @@
     "verify:ck-native-action-graph-matrix": "npm run verify:native-action-graph && npm run verify:native-esp32-action-graph:esp32 && npm run verify:native-esp32-action-graph:s2 && npm run verify:native-esp32-action-graph:s3 && npm run verify:native-esp32-action-graph:c3 && npm run verify:native-esp32-action-graph:c6",
     "check:ck-build-core-wasm": "node crates/ck-build-core/scripts/smoke-web.mjs packages/core/wasm",
     "check:ck-build-core-wasm-publications": "node scripts/check-ck-build-core-wasm-publications.mjs",
-    "prewarm:avr": "npm run build --workspace @arduinofast/server && npm run prewarm:avr --workspace @arduinofast/server",
-    "prewarm:esp32": "npm run build --workspace @arduinofast/server && npm run prewarm:esp32 --workspace @arduinofast/server",
-    "prebuild:firmware-assets": "npm run build --workspace @arduinofast/server && npm run prebuild:firmware-assets --workspace @arduinofast/server",
-    "prebuild:featured-firmware": "npm run build --workspace @arduinofast/server && npm run prebuild:featured-firmware --workspace @arduinofast/server",
+    "prewarm:avr": "npm run build --workspace @sketchforge/server && npm run prewarm:avr --workspace @sketchforge/server",
+    "prewarm:esp32": "npm run build --workspace @sketchforge/server && npm run prewarm:esp32 --workspace @sketchforge/server",
+    "prebuild:firmware-assets": "npm run build --workspace @sketchforge/server && npm run prebuild:firmware-assets --workspace @sketchforge/server",
+    "prebuild:featured-firmware": "npm run build --workspace @sketchforge/server && npm run prebuild:featured-firmware --workspace @sketchforge/server",
     "test": "npm run test:source && npm run test:unit",
     "test:unit": "vitest run packages/core/test/build-ir.test.ts packages/core/test/request-fingerprint.test.ts packages/web/test/project-files.test.ts packages/web/test/project-state.test.ts packages/web/test/editor-workflow.test.ts packages/web/test/browser-action-cache.test.ts packages/web/test/app-p1-wiring.test.ts",
     "test:compile-cancellation": "vitest run packages/core/test/sandbox-cancellation.test.ts packages/core/test/native-executor.test.ts packages/server/test/jobs.test.ts packages/server/test/compile-cancellation.test.ts packages/server/test/compile-lease.test.ts packages/server/test/distributed-queue-behavior.test.ts packages/server/test/cors.test.ts packages/web/test/browser-avr.test.ts packages/web/test/browser-esp32.test.ts packages/web/test/ck-browser-executor.test.ts packages/web/test/compile-submission.test.ts",
@@ -98,10 +98,10 @@
     "test:watch": "vitest",
     "audit:source-release": "node scripts/audit-source-release.mjs",
     "test:source": "npm run audit:source-release && node --test scripts/bench-static-http.test.mjs",
-    "dev": "npm run dev:gateway --workspace @arduinofast/server",
-    "start": "npm run start:gateway --workspace @arduinofast/server",
-    "dev:monolith": "npm run dev:monolith --workspace @arduinofast/server",
-    "start:monolith": "npm run start:monolith --workspace @arduinofast/server",
+    "dev": "npm run dev:gateway --workspace @sketchforge/server",
+    "start": "npm run start:gateway --workspace @sketchforge/server",
+    "dev:monolith": "npm run dev:monolith --workspace @sketchforge/server",
+    "start:monolith": "npm run start:monolith --workspace @sketchforge/server",
     "typecheck": "tsc -b --pretty"
   },
   "devDependencies": {

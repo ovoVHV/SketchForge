@@ -41,8 +41,8 @@ const AVR_BOARD_PROFILES = Object.freeze({
 const AVR_BROWSER_ACTION_ADAPTER_POLICY = 'ck-avr-browser-action-adapter-v1';
 const AVR_WORKER_TIMEOUT_MS = 120_000;
 const AVR_TRANSPORT_CACHE_NAMES = Object.freeze([
-  'arduinofast-avr-toolchain-v2',
-  'arduinofast-avr-toolchain-v3',
+  'sketchforge-avr-toolchain-v2',
+  'sketchforge-avr-toolchain-v3',
 ]);
 const browserBuildCache = typeof globalThis.caches === 'undefined'
   ? new BrowserActionCache()

@@ -1,5 +1,5 @@
 {
-  "name": "@arduinofast/esp32-xtensa-wasm-packager",
+  "name": "@sketchforge/esp32-xtensa-wasm-packager",
   "version": "1.0.0",
   "private": true,
   "type": "module",

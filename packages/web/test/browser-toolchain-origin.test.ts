@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BROWSER_TOOLCHAIN_ORIGINS_KEY,
+  LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY,
   resolveBrowserToolchainBase,
   resolveBrowserToolchainMirrorUrl,
 } from '../public/toolchain-origin.js';
@@ -57,6 +58,25 @@ describe('browser toolchain CDN origin resolver', () => {
     });
     expect(resolveBrowserToolchainBase({ id: 'arduino-avr-uno', fallback }).href)
       .toBe('https://cdn.example.test/avr/v3/');
+  });
+
+  it('falls back to the pre-rename page-level configuration', () => {
+    vi.stubGlobal(LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY, {
+      'arduino-avr-uno': 'https://legacy-cdn.example.test/avr/v3/',
+    });
+    expect(resolveBrowserToolchainBase({ id: 'arduino-avr-uno', fallback }).href)
+      .toBe('https://legacy-cdn.example.test/avr/v3/');
+  });
+
+  it('prefers the current page-level configuration over the legacy one', () => {
+    vi.stubGlobal(BROWSER_TOOLCHAIN_ORIGINS_KEY, {
+      'arduino-avr-uno': 'https://current-cdn.example.test/avr/v3/',
+    });
+    vi.stubGlobal(LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY, {
+      'arduino-avr-uno': 'https://legacy-cdn.example.test/avr/v3/',
+    });
+    expect(resolveBrowserToolchainBase({ id: 'arduino-avr-uno', fallback }).href)
+      .toBe('https://current-cdn.example.test/avr/v3/');
   });
 
   it('rejects an external HTTP origin and URL credentials', () => {

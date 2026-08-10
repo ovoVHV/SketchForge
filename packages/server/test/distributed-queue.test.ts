@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BoardDefinition } from '@arduinofast/core';
+import type { BoardDefinition } from '@sketchforge/core';
 import { queueName, workerPoolForBoard } from '../src/distributed-queue.js';
 
 function board(arch: BoardDefinition['arch'], tarch?: string): BoardDefinition {

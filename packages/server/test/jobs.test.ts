@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CompileEvent, CompileRequest, CompileResult, CompileService } from '@arduinofast/core';
+import type { CompileEvent, CompileRequest, CompileResult, CompileService } from '@sketchforge/core';
 import { JobManager, QueueClosedError, QueueFullError } from '../src/jobs.js';
 
 const success = (payload = ''): CompileResult => ({

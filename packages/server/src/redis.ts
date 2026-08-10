@@ -19,7 +19,7 @@ export function createRedisConnection(role: RedisRole, url = process.env.AF_REDI
       : {}),
     connectTimeout: positiveInt(process.env.AF_REDIS_CONNECT_TIMEOUT_MS, 2_000),
     enableReadyCheck: true,
-    connectionName: `arduinofast-${role}-${process.pid}`,
+    connectionName: `sketchforge-${role}-${process.pid}`,
   });
 }
 

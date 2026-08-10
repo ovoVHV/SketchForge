@@ -69,7 +69,7 @@ async function main(): Promise<void> {
     pool,
     hostRuntimeIdentity,
   );
-  const seedDir = process.env.AF_PREWARM_SEED_DIR ?? '/opt/arduinofast/prewarm-cache';
+  const seedDir = process.env.AF_PREWARM_SEED_DIR ?? '/opt/sketchforge/prewarm-cache';
   logSeedResult(seedPrewarmedCache({
     cacheDir,
     seedDir,

@@ -5,7 +5,7 @@ import { parseClangDriverOutput } from './clang-driver-output.js';
 
 export { Exit } from '@yowasp/runtime';
 
-const llvm = new Application(resources, instantiate, 'arduinofast-esp32-xtensa-llvm');
+const llvm = new Application(resources, instantiate, 'sketchforge-esp32-xtensa-llvm');
 const runLLVM = llvm.run.bind(llvm);
 
 function subcommand(command, subcommandName) {

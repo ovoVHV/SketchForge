@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Artifact, CompileResult } from '@arduinofast/core';
+import type { Artifact, CompileResult } from '@sketchforge/core';
 import {
   ArtifactStoreUnavailableError,
   ContentAddressedArtifactStore,
@@ -175,7 +175,7 @@ function s3Store(
     store: new S3ContentAddressedArtifactStore({
       client,
       bucket: 'firmware-artifacts',
-      prefix: 'arduinofast/artifacts',
+      prefix: 'sketchforge/artifacts',
       requestTimeoutMs: 1_000,
       ...options,
     }),
@@ -208,7 +208,7 @@ describe('S3ContentAddressedArtifactStore', () => {
     expect(command).toBeInstanceOf(PutObjectCommand);
     expect((command as PutObjectCommand).input).toMatchObject({
       Bucket: 'firmware-artifacts',
-      Key: `arduinofast/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
+      Key: `sketchforge/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
       ContentLength: artifact.size,
       IfNoneMatch: '*',
       ChecksumSHA256: Buffer.from(artifact.sha256, 'hex').toString('base64'),
@@ -253,7 +253,7 @@ describe('S3ContentAddressedArtifactStore', () => {
     expect(output.status).toBe('success');
     if (output.status !== 'success') return;
     expect(output.artifacts[0]?.url).toBe(
-      `https://firmware.example.test/content/arduinofast/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
+      `https://firmware.example.test/content/sketchforge/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
     );
     await expect(store.redirectUrl(artifact.sha256, artifact.name)).resolves.toBeNull();
   });
@@ -278,7 +278,7 @@ describe('S3ContentAddressedArtifactStore', () => {
     const command = signer.mock.calls[0]?.[1] as GetObjectCommand;
     expect(command.input).toMatchObject({
       Bucket: 'firmware-artifacts',
-      Key: `arduinofast/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
+      Key: `sketchforge/artifacts/${artifact.sha256.slice(0, 2)}/${artifact.sha256}`,
       ResponseContentDisposition: `attachment; filename="${artifact.name}"`,
     });
     expect(signer.mock.calls[0]?.[2]).toBe(300);

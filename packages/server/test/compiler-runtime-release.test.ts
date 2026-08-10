@@ -28,7 +28,7 @@ function shards(seed = '1'): CompilerRuntimeShard[] {
     schema: 1,
     pool,
     platform: 'linux/amd64',
-    imageRepository: `ghcr.io/arduinofast/worker-${pool}`,
+    imageRepository: `ghcr.io/sketchforge/worker-${pool}`,
     imageDigest: `sha256:${String((Number(seed) + index) % 10).repeat(64)}`,
   }));
 }

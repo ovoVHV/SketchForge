@@ -5,10 +5,14 @@
  * Keep this file short-lived in the gateway cache. An operator may replace it
  * during deployment without rebuilding app.js, for example:
  *
- * globalThis.__ARDUINOFAST_TOOLCHAIN_ORIGINS__ = {
- *   "arduino-avr-uno": "https://cdn.example.com/arduinofast/avr/v4/",
+ * globalThis.__SKETCHFORGE_TOOLCHAIN_ORIGINS__ = {
+ *   "arduino-avr-uno": "https://cdn.example.com/sketchforge/avr/v4/",
  * };
  */
-if (globalThis.__ARDUINOFAST_TOOLCHAIN_ORIGINS__ == null) {
-  globalThis.__ARDUINOFAST_TOOLCHAIN_ORIGINS__ = Object.freeze({});
+const BROWSER_TOOLCHAIN_ORIGINS_KEY = "__SKETCHFORGE_TOOLCHAIN_ORIGINS__";
+const LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY = "__ARDUINOFAST_TOOLCHAIN_ORIGINS__";
+
+if (globalThis[BROWSER_TOOLCHAIN_ORIGINS_KEY] == null) {
+  globalThis[BROWSER_TOOLCHAIN_ORIGINS_KEY]
+    = globalThis[LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY] ?? Object.freeze({});
 }

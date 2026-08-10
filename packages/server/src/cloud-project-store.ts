@@ -480,7 +480,7 @@ export class RedisProjectStorage {
     private readonly redis: Redis,
     options: RedisProjectStorageOptions = {},
   ) {
-    const prefix = options.prefix ?? 'arduinofast-compile';
+    const prefix = options.prefix ?? 'sketchforge-compile';
     if (!prefix || prefix.trim() !== prefix) throw new Error('project storage prefix must be non-empty and trimmed');
     this.limits = {
       ttlSeconds: checkedPositiveInt(

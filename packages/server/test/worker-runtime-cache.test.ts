@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { FileActionCache } from '@arduinofast/core';
+import { FileActionCache } from '@sketchforge/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   workerRuntimeCacheDirectory,

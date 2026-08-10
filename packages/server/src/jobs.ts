@@ -11,7 +11,7 @@
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { cpus } from 'node:os';
 import { Buffer } from 'node:buffer';
-import type { CompileEvent, CompileRequest, CompileResult, CompileService } from '@arduinofast/core';
+import type { CompileEvent, CompileRequest, CompileResult, CompileService } from '@sketchforge/core';
 
 export interface JobRecord {
   id: string;
@@ -133,11 +133,11 @@ export class JobManager {
     signal: AbortSignal,
   ): Promise<CompileResult> {
     const candidate = this.service as CompileService & {
-      planActionGraph?: (request: CompileRequest) => Promise<import('@arduinofast/core').BuildIR>;
+      planActionGraph?: (request: CompileRequest) => Promise<import('@sketchforge/core').BuildIR>;
       compileBuildIR?: (
-        ir: import('@arduinofast/core').BuildIR,
+        ir: import('@sketchforge/core').BuildIR,
         emit: (event: CompileEvent) => void,
-        options?: import('@arduinofast/core').BuildExecutionOptions,
+        options?: import('@sketchforge/core').BuildExecutionOptions,
       ) => Promise<CompileResult>;
     };
     const planner = typeof candidate.planActionGraph === 'function'

@@ -75,7 +75,7 @@ vi.mock('bullmq', () => {
 });
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { BoardDefinition, CompileRequest, CompileResult } from '@arduinofast/core';
+import type { BoardDefinition, CompileRequest, CompileResult } from '@sketchforge/core';
 import type { Redis } from 'ioredis';
 import { createCompileRedisNamespace } from '../src/compile-namespace.js';
 import {

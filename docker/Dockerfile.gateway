@@ -28,11 +28,11 @@ COPY packages/server/package.json packages/server/
 RUN npm ci --omit=dev --ignore-scripts
 
 FROM node:24-bookworm-slim
-RUN groupadd --gid 10001 arduinofast \
-    && useradd --uid 10001 --gid arduinofast --no-create-home \
-         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast \
-    && install -d -o arduinofast -g arduinofast -m 0750 \
-         /var/afartifacts /var/aflibraries /run/arduinofast
+RUN groupadd --gid 10001 sketchforge \
+    && useradd --uid 10001 --gid sketchforge --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin sketchforge \
+    && install -d -o sketchforge -g sketchforge -m 0750 \
+         /var/afartifacts /var/aflibraries /run/sketchforge
 
 WORKDIR /app
 COPY --from=production-dependencies /app/node_modules ./node_modules

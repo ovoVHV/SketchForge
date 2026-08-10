@@ -10,7 +10,7 @@ import {
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  PREWARM_CACHE_SEED_STATE_FILE,
+  LEGACY_PREWARM_CACHE_SEED_STATE_FILE,
   prewarmCacheSeedStatePath,
   seedPrewarmedCache,
 } from '../src/prewarm-cache-seed.js';
@@ -21,11 +21,11 @@ function writeDerivedEntry(root: string, name: string, content: string): void {
   const entry = join(root, 'esp32', name);
   mkdirSync(entry, { recursive: true });
   writeFileSync(join(entry, 'core.a'), content);
-  writeFileSync(join(entry, '.arduinofast-ready'), 'ready\n');
+  writeFileSync(join(entry, '.sketchforge-ready'), 'ready\n');
 }
 
 function makeFixture(): { root: string; seedDir: string; cacheDir: string } {
-  const root = mkdtempSync(join(tmpdir(), 'arduinofast-prewarm-seed-'));
+  const root = mkdtempSync(join(tmpdir(), 'sketchforge-prewarm-seed-'));
   temporaryRoots.push(root);
   const seedDir = join(root, 'seed');
   const cacheDir = join(root, 'cache');
@@ -142,7 +142,7 @@ describe('prewarmed cache volume seed', () => {
   it('migrates a legacy interrupted seed by merging without overwriting partial paths', () => {
     const { seedDir, cacheDir } = makeFixture();
     mkdirSync(cacheDir, { recursive: true });
-    writeFileSync(join(cacheDir, PREWARM_CACHE_SEED_STATE_FILE), JSON.stringify({
+    writeFileSync(join(cacheDir, LEGACY_PREWARM_CACHE_SEED_STATE_FILE), JSON.stringify({
       version: 1,
       status: 'in-progress',
       bundleId: 'bundle-a',

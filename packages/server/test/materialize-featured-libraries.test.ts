@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { LibraryRegistry } from '@arduinofast/core';
+import { LibraryRegistry } from '@sketchforge/core';
 import { materializeFeaturedLibraries } from '../src/materialize-featured-libraries.js';
 
 const roots: string[] = [];

@@ -5,17 +5,17 @@
 #
 # Build one target family at a time:
 #   docker build -f docker/Dockerfile.worker-esp32 \
-#     --build-arg TARGET_FAMILY=xtensa -t arduinofast/worker-esp32-xtensa:3.3.7-v2 .
+#     --build-arg TARGET_FAMILY=xtensa -t sketchforge/worker-esp32-xtensa:3.3.7-v2 .
 #   docker build -f docker/Dockerfile.worker-esp32 \
-#     --build-arg TARGET_FAMILY=riscv -t arduinofast/worker-esp32-riscv:3.3.7-v2 .
+#     --build-arg TARGET_FAMILY=riscv -t sketchforge/worker-esp32-riscv:3.3.7-v2 .
 #
 # The default final target does not prewarm. CI can build a cache-seeded image
 # explicitly, using the exact runtime cache identity:
 #   docker build -f docker/Dockerfile.worker-esp32 --target prewarmed \
 #     --build-arg TARGET_FAMILY=xtensa \
-#     --build-arg AF_COMPILER_BUNDLE_ID=arduinofast-production-v2 \
+#     --build-arg AF_COMPILER_BUNDLE_ID=sketchforge-production-v2 \
 #     --build-arg AF_PREWARM_BOARDS=esp32:esp32:esp32s3 \
-#     -t arduinofast/worker-esp32-xtensa:3.3.7-v2 .
+#     -t sketchforge/worker-esp32-xtensa:3.3.7-v2 .
 #
 # xtensa contains ESP32, ESP32-S2, and ESP32-S3. riscv contains ESP32-C3,
 # ESP32-C5, ESP32-C6, ESP32-H2, and both ESP32-P4 SDK revisions.
@@ -33,7 +33,7 @@ COPY packages/core ./packages/core
 COPY packages/server ./packages/server
 COPY packages/web/public/esp32/v1/libraries ./packages/web/public/esp32/v1/libraries
 RUN npx tsc -b --force packages/core packages/server \
-    && AF_FEATURED_LIBRARY_DIR=/opt/arduinofast/featured-libraries \
+    && AF_FEATURED_LIBRARY_DIR=/opt/sketchforge/featured-libraries \
        node packages/server/dist/materialize-featured-libraries-cli.js
 
 FROM node:24-bookworm-slim AS production-dependencies
@@ -166,9 +166,9 @@ ARG TARGET_FAMILY
 RUN apt-get update && apt-get install -y --no-install-recommends \
       bubblewrap python3-minimal util-linux \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 arduinofast \
-    && useradd --uid 10001 --gid arduinofast --no-create-home \
-         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast
+    && groupadd --gid 10001 sketchforge \
+    && useradd --uid 10001 --gid sketchforge --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin sketchforge
 
 COPY --from=toolchain /opt/esp32 /opt/esp32
 
@@ -188,7 +188,7 @@ COPY --from=ck-build-core-native /src/crates/ck-build-core/target/release/ck-bui
 COPY --from=build /app/packages/core/package.json ./packages/core/
 COPY --from=build /app/packages/server/dist ./packages/server/dist
 COPY --from=build /app/packages/server/package.json ./packages/server/
-COPY --from=build /opt/arduinofast/featured-libraries /opt/arduinofast/featured-libraries
+COPY --from=build /opt/sketchforge/featured-libraries /opt/sketchforge/featured-libraries
 COPY boards ./boards
 COPY prebuild ./prebuild
 COPY packages/web/public/esp32/v1/release.js ./packages/web/public/esp32/v1/release.js
@@ -200,7 +200,7 @@ ENV AF_ESP32_CORE=/opt/esp32/platform/cores/esp32 \
     AF_ESP32_PLATFORM=/opt/esp32/platform \
     AF_ESP32_SDK_ROOT=/opt/esp32/sdk \
     AF_ESP32_ESPTOOL=/opt/esp32/esptool/esptool \
-    AF_LIBRARIES_DIRS=/opt/esp32/platform/libraries:/opt/arduinofast/featured-libraries \
+    AF_LIBRARIES_DIRS=/opt/esp32/platform/libraries:/opt/sketchforge/featured-libraries \
     AF_TOOLCHAIN_PARALLELISM=1 \
     AF_CACHE_DIR=/var/afcache \
     AF_WORK_DIR=/var/afwork \
@@ -211,8 +211,8 @@ ENV AF_ESP32_CORE=/opt/esp32/platform/cores/esp32 \
     AF_CK_BUILD_CORE_NATIVE=/app/packages/core/native/ck-build-core \
     NODE_ENV=production
 
-RUN install -d -o arduinofast -g arduinofast -m 0750 \
-      /var/afcache /var/afwork /var/afartifacts /var/aflibraries /run/arduinofast
+RUN install -d -o sketchforge -g sketchforge -m 0750 \
+      /var/afcache /var/afwork /var/afartifacts /var/aflibraries /run/sketchforge
 
 # The orchestrator must use a read-only root filesystem and provide bounded
 # writable mounts only for /var/afcache, /var/afwork, and /tmp.
@@ -224,13 +224,13 @@ FROM runtime-base AS runtime-xtensa
 ENV AF_ESP32_XTENSA_BIN=/opt/esp32/toolchain/bin \
     AF_ESP32_XTENSA_ROOT=/opt/esp32/toolchain \
     AF_WORKER_POOL=esp32-xtensa
-LABEL com.arduinofast.worker-family="esp32-xtensa"
+LABEL com.sketchforge.worker-family="esp32-xtensa"
 
 FROM runtime-base AS runtime-riscv
 ENV AF_ESP32_RISCV_BIN=/opt/esp32/toolchain/bin \
     AF_ESP32_RISCV_ROOT=/opt/esp32/toolchain \
     AF_WORKER_POOL=esp32-riscv
-LABEL com.arduinofast.worker-family="esp32-riscv"
+LABEL com.sketchforge.worker-family="esp32-riscv"
 
 # This stage is intentionally not an ancestor of the default final target.
 # It runs the compiled CLI rather than the TypeScript source script, so the
@@ -261,12 +261,12 @@ ARG AF_PREWARM_BOARDS
 ARG AF_PREWARM_MATRIX=all
 ARG TARGET_FAMILY
 ENV AF_COMPILER_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
-    AF_PREWARM_SEED_DIR=/opt/arduinofast/prewarm-cache \
+    AF_PREWARM_SEED_DIR=/opt/sketchforge/prewarm-cache \
     AF_PREWARM_SEED_BUNDLE_ID=${AF_COMPILER_BUNDLE_ID} \
     AF_PREWARM_SEED_VERSION=esp32-prewarm-v3/${TARGET_FAMILY}/${AF_PREWARM_MATRIX}/${AF_PREWARM_BOARDS}
-COPY --from=prewarm-build --chown=10001:10001 /var/afcache/ /opt/arduinofast/prewarm-cache/
+COPY --from=prewarm-build --chown=10001:10001 /var/afcache/ /opt/sketchforge/prewarm-cache/
 VOLUME ["/var/afcache", "/var/afartifacts"]
-LABEL com.arduinofast.cache-prewarmed="true"
+LABEL com.sketchforge.cache-prewarmed="true"
 ENTRYPOINT ["node", "packages/server/dist/prewarm-cache-entrypoint.js"]
 
 # Keep this last: `docker build` without --target selects normal final and

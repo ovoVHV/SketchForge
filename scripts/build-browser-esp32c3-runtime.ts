@@ -168,7 +168,7 @@ export type RuntimeTarget = Readonly<{
 
 const RISCV_COMPILER_PROFILE = Object.freeze({
   architecture: 'riscv' as const,
-  compilerPackage: '@arduinofast/esp32c3-clang-wasm',
+  compilerPackage: '@sketchforge/esp32c3-clang-wasm',
   compilerPackId: 'riscv32-esp-elf-wasm',
   gccTriple: 'riscv32-esp-elf' as const,
   gccDriverPrefix: 'riscv32-esp-elf' as const,
@@ -179,7 +179,7 @@ const RISCV_COMPILER_PROFILE = Object.freeze({
 
 const XTENSA_COMPILER_PROFILE = Object.freeze({
   architecture: 'xtensa' as const,
-  compilerPackage: '@arduinofast/esp32-xtensa-clang-wasm',
+  compilerPackage: '@sketchforge/esp32-xtensa-clang-wasm',
   compilerPackId: 'xtensa-esp-elf-wasm',
   gccTriple: 'xtensa-esp-elf' as const,
   gccLibraryArgs: Object.freeze([]),
@@ -1852,7 +1852,7 @@ async function main(): Promise<void> {
   ensureWorkspaceChild(workspace, clangOutput, 'Clang output');
   const tarball = compilerTarball(args.compiler);
   const sourceLockPath = join(workspace, 'toolchains', target.sourceBundleDir, 'source-lock.json');
-  const work = mkdtempSync(join(tmpdir(), `arduinofast-${target.key}-runtime-`));
+  const work = mkdtempSync(join(tmpdir(), `sketchforge-${target.key}-runtime-`));
 
   try {
     const compiler = await extractCompiler(tarball, work, target);

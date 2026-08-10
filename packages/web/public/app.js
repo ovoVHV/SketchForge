@@ -20,6 +20,8 @@ import {
   compileRecoveryBoardDisposition,
 } from './compile-recovery.js';
 import {
+  ACTIVE_COMPILE_RECORD_KEY,
+  LEGACY_ACTIVE_COMPILE_DB_NAME,
   activeCompileRecordKey,
   activeCompileTabId,
   createActiveCompilePersistence,
@@ -45,7 +47,9 @@ import {
   saveProjectState,
 } from './project-state.js';
 import {
+  LEGACY_PROJECT_ARCHIVE_EXTENSION,
   MAX_PROJECT_ARCHIVE_BYTES,
+  PROJECT_ARCHIVE_EXTENSION,
   decodeProjectArchive,
   encodeProjectArchive,
   projectArchiveFilename,
@@ -111,6 +115,10 @@ const libraryImportFormEl = $('library-import-form');
 const libraryRepositoryEl = $('library-repository');
 const libraryRefEl = $('library-ref');
 const libraryImportStatusEl = $('library-import-status');
+const VISITOR_STORAGE_KEY = 'sketchforge.visitor';
+const LEGACY_VISITOR_STORAGE_KEY = 'arduinofast.visitor';
+const CLOUD_PROJECT_ID_STORAGE_KEY = 'sketchforge.cloud-project-id.v1';
+const LEGACY_CLOUD_PROJECT_ID_STORAGE_KEY = 'arduinofast.cloud-project-id.v1';
 const legacyProjectStateStorage = (() => {
   try {
     return globalThis.localStorage;
@@ -137,7 +145,19 @@ const activeCompileTab = activeCompileTabId(tabCompileStorage);
 const activeCompileKey = activeCompileRecordKey(activeCompileTab);
 const activeCompilePersistence = createActiveCompilePersistence({
   durable: createIndexedDbActiveCompileStore(activeCompileIndexedDb, activeCompileKey),
-  legacyDurables: [createIndexedDbActiveCompileStore(activeCompileIndexedDb)],
+  legacyDurables: [
+    createIndexedDbActiveCompileStore(activeCompileIndexedDb),
+    createIndexedDbActiveCompileStore(
+      activeCompileIndexedDb,
+      activeCompileKey,
+      LEGACY_ACTIVE_COMPILE_DB_NAME,
+    ),
+    createIndexedDbActiveCompileStore(
+      activeCompileIndexedDb,
+      ACTIVE_COMPILE_RECORD_KEY,
+      LEGACY_ACTIVE_COMPILE_DB_NAME,
+    ),
+  ],
   fallbackStorage: tabCompileStorage,
   legacyStorages: [legacyProjectStateStorage, tabCompileStorage],
 });
@@ -186,13 +206,41 @@ const compileStageLabels = {
   done: '正在收集编译结果',
 };
 
-function anonymousVisitorId() {
-  const key = 'arduinofast.visitor';
+function migratedStorageValue(storage, currentKey, legacyKey) {
+  let current;
+  try { current = storage?.getItem?.(currentKey); } catch { return null; }
+  if (typeof current === 'string' && current) return current;
+
+  let legacy;
+  try { legacy = storage?.getItem?.(legacyKey); } catch { return null; }
+  if (typeof legacy !== 'string' || !legacy) return null;
+  if (typeof storage?.setItem === 'function') {
+    try {
+      storage.setItem(currentKey, legacy);
+      storage?.removeItem?.(legacyKey);
+    } catch { /* reading the old value is still useful when migration is blocked */ }
+  }
+  return legacy;
+}
+
+function storeCurrentStorageValue(storage, currentKey, legacyKey, value) {
+  if (typeof storage?.setItem !== 'function') return false;
   try {
-    const current = localStorage.getItem(key);
+    storage.setItem(currentKey, value);
+    storage?.removeItem?.(legacyKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function anonymousVisitorId() {
+  try {
+    const storage = globalThis.localStorage;
+    const current = migratedStorageValue(storage, VISITOR_STORAGE_KEY, LEGACY_VISITOR_STORAGE_KEY);
     if (current) return current;
     const created = crypto.randomUUID();
-    localStorage.setItem(key, created);
+    storeCurrentStorageValue(storage, VISITOR_STORAGE_KEY, LEGACY_VISITOR_STORAGE_KEY, created);
     return created;
   } catch {
     return crypto.randomUUID();
@@ -208,7 +256,7 @@ int interval = 1000;
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("arduinofast ready");
+  Serial.println("sketchforge ready");
 }
 
 void loop() {
@@ -720,7 +768,14 @@ function cloudProjectId() {
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(value)) {
     throw new Error('云项目名称只能包含字母、数字、下划线和连字符');
   }
-  try { localStorage.setItem('arduinofast.cloud-project-id.v1', value); } catch { /* optional */ }
+  try {
+    storeCurrentStorageValue(
+      globalThis.localStorage,
+      CLOUD_PROJECT_ID_STORAGE_KEY,
+      LEGACY_CLOUD_PROJECT_ID_STORAGE_KEY,
+      value,
+    );
+  } catch { /* optional */ }
   return value;
 }
 
@@ -1143,7 +1198,7 @@ async function storeCompile(run) {
   } catch (error) {
     // Validation failures are programming errors; keep the accepted job alive
     // in this tab and make the persistence failure observable.
-    console.warn('[ArduinoFast] Active compile record could not be stored.', error);
+    console.warn('[SketchForge] Active compile record could not be stored.', error);
     return null;
   }
 }
@@ -1153,7 +1208,7 @@ async function clearStoredCompile(run) {
   try {
     await activeCompilePersistence.delete(run.jobId, run.acceptanceId);
   } catch (error) {
-    console.warn('[ArduinoFast] Active compile record could not be cleared.', error);
+    console.warn('[SketchForge] Active compile record could not be cleared.', error);
   }
 }
 
@@ -1161,7 +1216,7 @@ async function loadStoredCompile() {
   try {
     return await activeCompilePersistence.load();
   } catch (error) {
-    console.warn('[ArduinoFast] Active compile record could not be loaded.', error);
+    console.warn('[SketchForge] Active compile record could not be loaded.', error);
     return null;
   }
 }
@@ -1810,13 +1865,25 @@ async function stopMonitor() {
 // ---------------------------------------------------------------------------
 
 async function init() {
+  if (projectArchiveInput) {
+    projectArchiveInput.accept = [
+      '.json',
+      PROJECT_ARCHIVE_EXTENSION,
+      LEGACY_PROJECT_ARCHIVE_EXTENSION,
+      'application/json',
+    ].join(',');
+  }
   try {
-    const savedProjectId = localStorage.getItem('arduinofast.cloud-project-id.v1');
+    const savedProjectId = migratedStorageValue(
+      globalThis.localStorage,
+      CLOUD_PROJECT_ID_STORAGE_KEY,
+      LEGACY_CLOUD_PROJECT_ID_STORAGE_KEY,
+    );
     if (savedProjectId && projectIdEl) projectIdEl.value = savedProjectId;
   } catch { /* optional */ }
   const savedCompile = await loadStoredCompile();
   const storedProject = loadProjectState(projectStateStorage)
-    ?? loadProjectState(legacyProjectStateStorage);
+    ?? loadProjectState(legacyProjectStateStorage, { migrationStorage: projectStateStorage });
   try {
     const initial = savedCompile?.context?.files
       ? createProjectSnapshot(savedCompile.context.files)

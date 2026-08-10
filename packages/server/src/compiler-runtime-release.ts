@@ -8,7 +8,7 @@ import {
 import { WORKER_POOLS, type WorkerPool } from './worker-pools.js';
 
 export const COMPILER_RUNTIME_RELEASE_SCHEMA = 1 as const;
-export const COMPILER_RUNTIME_RELEASE_KIND = 'arduinofast-compiler-runtime-release';
+export const COMPILER_RUNTIME_RELEASE_KIND = 'sketchforge-compiler-runtime-release';
 export const UNVERIFIED_HOST_RUNTIME_IDENTITY = 'unverified-local';
 
 const MAX_RELEASE_BYTES = 64 * 1024;
@@ -91,7 +91,7 @@ function validRepository(value: unknown): value is string {
 function canonicalHostIdentityPayload(runtime: Omit<CompilerHostRuntime, 'hostRuntimeIdentity' | 'imageRepository'>) {
   return {
     schema: COMPILER_RUNTIME_RELEASE_SCHEMA,
-    kind: 'arduinofast-host-runtime',
+    kind: 'sketchforge-host-runtime',
     mode: runtime.mode,
     pool: runtime.pool,
     platform: runtime.platform,

@@ -227,12 +227,12 @@ export async function auditCkBuildPlatform({ root = process.cwd() } = {}) {
     'planBuildIR',
   ]);
   await requireText('packages/web/public/ck-platform-planning.js', [
-    'Generated from @arduinofast/core platform-planning',
+    'Generated from @sketchforge/core platform-planning',
     'derivePlatformArchiveCommand',
     'lowerPlatformBuildCommands',
   ]);
   await requireText('packages/web/public/ck-esp32-partitions.js', [
-    'Generated from @arduinofast/core ESP32 custom partitions',
+    'Generated from @sketchforge/core ESP32 custom partitions',
     'resolveCustomEsp32Partitions',
     'encodeEsp32PartitionCsv',
   ]);
@@ -321,7 +321,7 @@ export async function auditCkBuildPlatform({ root = process.cwd() } = {}) {
   for (const relativePath of ['docker/Dockerfile.worker-avr', 'docker/Dockerfile.worker-esp32']) {
     await requireText(relativePath, [
       'materialize-featured-libraries-cli.js',
-      '/opt/arduinofast/featured-libraries',
+      '/opt/sketchforge/featured-libraries',
     ]);
   }
   await requireText('.github/workflows/prebuild-worker-images.yml', [

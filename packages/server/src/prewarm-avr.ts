@@ -12,7 +12,7 @@ import {
   planPrebuildMatrix,
   resolveEsp32PrewarmCacheDir,
   type CompileResult,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SKETCH = 'void setup() {}\nvoid loop() {}\n';

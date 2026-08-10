@@ -22,7 +22,7 @@ function treeDigest(files: Array<{ path: string; content: string }>) {
 }
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'arduinofast-library-tree-'));
+  const root = await mkdtemp(join(tmpdir(), 'sketchforge-library-tree-'));
   temporaryDirectories.push(root);
   await mkdir(join(root, 'src', 'nested'), { recursive: true });
   await writeFile(join(root, 'src', 'Alpha.cpp'), 'int alpha = 1;\n');

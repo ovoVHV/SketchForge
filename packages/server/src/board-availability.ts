@@ -3,7 +3,7 @@ import {
   unsupportedOptionErrors,
   type BoardDefinition,
   type BoardInfo,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 
 /**
  * Public board metadata plus the current compiler availability. Board

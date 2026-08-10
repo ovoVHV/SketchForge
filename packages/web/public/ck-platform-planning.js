@@ -1,4 +1,4 @@
-// Generated from @arduinofast/core platform-planning. Do not maintain a browser-specific planner.
+// Generated from @sketchforge/core platform-planning. Do not maintain a browser-specific planner.
 
 // packages/core/src/build-ir/canonical.ts
 function canonicalJson(value) {

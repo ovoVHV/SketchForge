@@ -170,7 +170,7 @@ describe('浏览器 AVR 能力路由', () => {
     }
 
     vi.stubGlobal('Worker', WorkerHarness);
-    vi.stubGlobal('__ARDUINOFAST_TOOLCHAIN_ORIGINS__', {
+    vi.stubGlobal('__SKETCHFORGE_TOOLCHAIN_ORIGINS__', {
       'arduino-avr-uno': 'https://cdn.example.test/toolchains/avr/v4/',
     });
     vi.stubGlobal('fetch', vi.fn(async (input: URL | string) => {

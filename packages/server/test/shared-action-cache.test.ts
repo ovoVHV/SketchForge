@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MemoryActionCache, sha256Hex, type ActionCacheEntry } from '@arduinofast/core';
+import { MemoryActionCache, sha256Hex, type ActionCacheEntry } from '@sketchforge/core';
 import { RedisActionCache, TieredActionCache } from '../src/shared-action-cache.js';
 
 class FakeRedis {

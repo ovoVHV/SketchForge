@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const EXPECTED_PACKAGE = '@arduinofast/esp32c3-clang-wasm';
+const EXPECTED_PACKAGE = '@sketchforge/esp32c3-clang-wasm';
 const root = process.cwd();
 
 if (process.argv[2] === '--self-test') {
@@ -48,7 +48,7 @@ try {
     tarball,
   ], { cwd: installRoot, stdio: 'inherit' });
 
-  const packageRoot = join(installRoot, 'node_modules', '@arduinofast', 'esp32c3-clang-wasm');
+  const packageRoot = join(installRoot, 'node_modules', '@sketchforge', 'esp32c3-clang-wasm');
   const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   if (packageJson.name !== EXPECTED_PACKAGE || typeof packageJson.version !== 'string') {
     throw new Error(`unexpected compiler package identity: ${packageJson.name}@${packageJson.version}`);

@@ -49,7 +49,7 @@ function compilerRuntimeRelease(seed: string) {
     const imageDigest = `sha256:${String((Number(seed) + index) % 10).repeat(64)}`;
     const hostPayload = {
       schema: 1,
-      kind: 'arduinofast-host-runtime',
+      kind: 'sketchforge-host-runtime',
       mode: 'oci-image',
       pool,
       platform: 'linux/amd64',
@@ -59,14 +59,14 @@ function compilerRuntimeRelease(seed: string) {
       pool,
       mode: 'oci-image',
       platform: 'linux/amd64',
-      imageRepository: `ghcr.io/arduinofast/worker-${pool}`,
+      imageRepository: `ghcr.io/sketchforge/worker-${pool}`,
       imageDigest,
       hostRuntimeIdentity: `sha256:${sha256(JSON.stringify(hostPayload))}`,
     };
   });
   const payload = {
     schema: 1,
-    kind: 'arduinofast-compiler-runtime-release',
+    kind: 'sketchforge-compiler-runtime-release',
     trust: 'accepted',
     compilerBundleId: 'matrix-test-bundle',
     runtimes,

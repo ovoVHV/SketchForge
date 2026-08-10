@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ExecRequest, SandboxExecutor } from '@arduinofast/core';
+import type { ExecRequest, SandboxExecutor } from '@sketchforge/core';
 import {
   DEFAULT_LIMITS,
   DeadlineExceededError,
   OperationCancelledError,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { JobDeadline, JobDeadlineExecutor } from '../src/deadline-executor.js';
 
 const request = (): ExecRequest => ({

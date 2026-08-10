@@ -1,4 +1,4 @@
-// Generated from @arduinofast/core blocks generator. Do not maintain browser-only code generation.
+// Generated from @sketchforge/core blocks generator. Do not maintain browser-only code generation.
 
 // packages/core/src/build-ir/canonical.ts
 function sha256Hex(input) {

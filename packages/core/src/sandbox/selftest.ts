@@ -37,7 +37,7 @@ export interface SelfTestResult {
   checks: SelfTestCheck[];
 }
 
-const CANARY = 'ARDUINOFAST_CANARY_MUST_NOT_BE_READABLE';
+const CANARY = 'SKETCHFORGE_CANARY_MUST_NOT_BE_READABLE';
 
 export async function selfTestSandbox(
   executor: SandboxExecutor,

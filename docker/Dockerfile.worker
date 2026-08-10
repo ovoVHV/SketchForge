@@ -69,9 +69,9 @@ FROM node:24-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
       bubblewrap util-linux \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 arduinofast \
-    && useradd --uid 10001 --gid arduinofast --no-create-home \
-         --home-dir /nonexistent --shell /usr/sbin/nologin arduinofast
+    && groupadd --gid 10001 sketchforge \
+    && useradd --uid 10001 --gid sketchforge --no-create-home \
+         --home-dir /nonexistent --shell /usr/sbin/nologin sketchforge
 
 COPY --from=toolchain /opt/avr /opt/avr
 COPY --from=toolchain /opt/avr-gcc /opt/avr-gcc
@@ -102,7 +102,7 @@ ENV AF_AVR_BIN=/opt/avr-gcc/bin \
     HOST=0.0.0.0 \
     PORT=3000
 
-RUN install -d -o arduinofast -g arduinofast -m 0750 /var/afcache /var/afwork
+RUN install -d -o sketchforge -g sketchforge -m 0750 /var/afcache /var/afwork
 VOLUME ["/var/afcache"]
 EXPOSE 3000
 

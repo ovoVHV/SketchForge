@@ -3,7 +3,7 @@ const TOOLCHAIN_ID = /^[a-z][a-z0-9._-]{0,63}$/;
 /**
  * Operators may set this before loading app.js:
  *
- *   globalThis.__ARDUINOFAST_TOOLCHAIN_ORIGINS__ = {
+ *   globalThis.__SKETCHFORGE_TOOLCHAIN_ORIGINS__ = {
  *     "arduino-avr-uno": "https://cdn.example.com/arduino/avr/v4/",
  *   };
  *
@@ -11,13 +11,19 @@ const TOOLCHAIN_ID = /^[a-z][a-z0-9._-]{0,63}$/;
  * Immutable compiler data (verified WASM and packs) may be delivered directly
  * by an object store/CDN.
  */
-export const BROWSER_TOOLCHAIN_ORIGINS_KEY = "__ARDUINOFAST_TOOLCHAIN_ORIGINS__";
+export const BROWSER_TOOLCHAIN_ORIGINS_KEY = "__SKETCHFORGE_TOOLCHAIN_ORIGINS__";
+export const LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY = "__ARDUINOFAST_TOOLCHAIN_ORIGINS__";
+
+export function browserToolchainOrigins(scope = globalThis) {
+  return scope?.[BROWSER_TOOLCHAIN_ORIGINS_KEY]
+    ?? scope?.[LEGACY_BROWSER_TOOLCHAIN_ORIGINS_KEY];
+}
 
 /** Resolve one immutable data-pack base without accepting credentials or query URLs. */
 export function resolveBrowserToolchainBase({
   id,
   fallback,
-  origins = globalThis[BROWSER_TOOLCHAIN_ORIGINS_KEY],
+  origins = browserToolchainOrigins(),
   pageUrl = globalThis.location?.href ?? import.meta.url,
 } = {}) {
   if (typeof id !== "string" || !TOOLCHAIN_ID.test(id)) {
@@ -48,6 +54,34 @@ export function resolveBrowserToolchainBase({
     throw new Error(`browser toolchain origin must use HTTPS: ${id}`);
   }
   return configuredUrl;
+}
+
+/** Map one release-relative immutable file onto the configured mirror root. */
+export function resolveBrowserToolchainMirrorUrl({
+  id,
+  fallbackRoot,
+  fallbackUrl,
+  origins = browserToolchainOrigins(),
+  pageUrl = globalThis.location?.href ?? import.meta.url,
+} = {}) {
+  const root = normalizeToolchainBase(fallbackRoot, pageUrl, {
+    allowHttp: true,
+    allowFile: true,
+  });
+  const target = new URL(fallbackUrl, root);
+  if (target.username || target.password || target.search || target.hash) {
+    throw new Error("browser toolchain mirror URL cannot contain credentials, query, or fragment");
+  }
+  if (target.origin !== root.origin || !target.pathname.startsWith(root.pathname)) {
+    throw new Error("browser toolchain mirror URL is outside the application release root");
+  }
+  const mirrorRoot = resolveBrowserToolchainBase({
+    id,
+    fallback: root,
+    origins,
+    pageUrl,
+  });
+  return new URL(target.pathname.slice(root.pathname.length), mirrorRoot);
 }
 
 export function normalizeToolchainBase(value, base, {

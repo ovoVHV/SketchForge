@@ -21,7 +21,7 @@ import {
   type CompileResult,
   type Diagnostic,
   type SandboxExecutor,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { createArtifactStore } from './artifact-store.js';
 import { CapabilityHeartbeat } from './capabilities.js';
 import { createCompileRedisNamespace } from './compile-namespace.js';
@@ -169,7 +169,7 @@ function timeoutResult(): CompileResult {
 
 const pool = workerPoolFromEnv();
 const bundleId = process.env.AF_COMPILER_BUNDLE_ID ?? 'development';
-const queuePrefix = process.env.AF_QUEUE_PREFIX ?? 'arduinofast-compile';
+const queuePrefix = process.env.AF_QUEUE_PREFIX ?? 'sketchforge-compile';
 const runtimeConfiguration = loadCompilerRuntimeConfiguration(process.env, bundleId, IS_PRODUCTION);
 const hostRuntimeIdentity = workerHostRuntimeIdentity(runtimeConfiguration, pool, process.env);
 const compileNamespace = createCompileRedisNamespace(
@@ -255,7 +255,7 @@ const actionCache = new TieredActionCache(
     pruneIntervalMs: positiveInt('AF_LOCAL_ACTION_CACHE_PRUNE_INTERVAL_MS', 5 * 60 * 1_000),
   }),
   new RedisActionCache(dataRedis, {
-    namespace: `${process.env.AF_ACTION_CACHE_PREFIX ?? 'arduinofast-action-cache'}:${bundleId}`
+    namespace: `${process.env.AF_ACTION_CACHE_PREFIX ?? 'sketchforge-action-cache'}:${bundleId}`
       .replace(/[^A-Za-z0-9:_./-]/g, '_')
       + `:r${compileNamespace.releaseHash}`,
     ttlSeconds: actionCacheTtlSeconds,
@@ -528,7 +528,7 @@ const lifecycle = new WorkerLifecycle({
 });
 await worker.waitUntilReady();
 console.log(
-  `arduinofast worker ${pool} ready for ${readyBoards.map((board) => board.fqbn).join(', ')}`
+  `sketchforge worker ${pool} ready for ${readyBoards.map((board) => board.fqbn).join(', ')}`
   + (hostCapacity ? `; host ${hostCapacity.hostId} capacity ${hostCapacity.capacity}` : '; local concurrency 1'),
 );
 

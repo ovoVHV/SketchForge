@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { CompileRequest } from './types.js';
 import { normalizeSource } from './preprocess/index.js';
 
-const FINGERPRINT_FORMAT = 'arduinofast-compile-request-v1';
+const FINGERPRINT_FORMAT = 'sketchforge-compile-request-v1';
 const NONDETERMINISTIC_MACRO = /\b(?:__DATE__|__TIME__|__TIMESTAMP__|__COUNTER__)\b/;
 
 export interface CompileRequestFingerprint {

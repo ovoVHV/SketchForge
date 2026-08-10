@@ -59,7 +59,7 @@ const NATIVE_LIBRARY_RESULT_PREFIX = 'CK_NATIVE_LIBRARY_RESULT ';
 const NATIVE_LIBRARY_CLOSURE_ENV = 'CK_NATIVE_LIBRARY_CLOSURE_SHA256';
 const NATIVE_LIBRARY_SNAPSHOT_ROOT_ENV = 'CK_NATIVE_LIBRARY_SNAPSHOT_ROOT';
 const COMPILER_RUNTIME_RELEASE_SCHEMA = 1;
-const COMPILER_RUNTIME_RELEASE_KIND = 'arduinofast-compiler-runtime-release';
+const COMPILER_RUNTIME_RELEASE_KIND = 'sketchforge-compiler-runtime-release';
 const COMPILER_RUNTIME_POOLS = Object.freeze(['avr', 'esp32-xtensa', 'esp32-riscv']);
 const MAX_COMPILER_RUNTIME_RELEASE_BYTES = 64 * 1024;
 const SHA256_ID = /^sha256:[a-f0-9]{64}$/;
@@ -307,7 +307,7 @@ function validateCompilerRuntimeRelease(value) {
     }
     const hostPayload = {
       schema: COMPILER_RUNTIME_RELEASE_SCHEMA,
-      kind: 'arduinofast-host-runtime',
+      kind: 'sketchforge-host-runtime',
       mode: input.mode,
       pool: input.pool,
       platform: input.platform,

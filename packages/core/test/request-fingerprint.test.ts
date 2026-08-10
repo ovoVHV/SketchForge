@@ -44,7 +44,7 @@ describe('fingerprintCompileRequest', () => {
 
     expect(fingerprintCompileRequest(first)).toEqual(fingerprintCompileRequest(second));
     expect(fingerprintCompileRequest(first)).toEqual({
-      baseHash: 'cf854325aa14382665f43ddbc467ef42c26dc5ed8af9a2d3444123ed2d3f6586',
+      baseHash: '9af88b36fcfa40ef8bc08f4adae8eadab1acbb6089ecf48b8da88e8f7dfa1abf',
       resultReusable: true,
     });
   });

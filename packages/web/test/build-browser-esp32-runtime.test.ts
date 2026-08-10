@@ -291,19 +291,19 @@ describe('browser ESP32 Xtensa runtime profiles', () => {
     }))).toEqual({
       esp32: {
         fqbn: 'esp32:esp32:esp32', sdkTarget: 'esp32',
-        compilerPackage: '@arduinofast/esp32-xtensa-clang-wasm',
+        compilerPackage: '@sketchforge/esp32-xtensa-clang-wasm',
         compilerPackId: 'xtensa-esp-elf-wasm', sourceBundleDir: 'esp32-xtensa-wasm',
         gccDriverPrefix: 'xtensa-esp32-elf',
       },
       esp32s2: {
         fqbn: 'esp32:esp32:esp32s2', sdkTarget: 'esp32s2',
-        compilerPackage: '@arduinofast/esp32-xtensa-clang-wasm',
+        compilerPackage: '@sketchforge/esp32-xtensa-clang-wasm',
         compilerPackId: 'xtensa-esp-elf-wasm', sourceBundleDir: 'esp32-xtensa-wasm',
         gccDriverPrefix: 'xtensa-esp32s2-elf',
       },
       esp32s3: {
         fqbn: 'esp32:esp32:esp32s3', sdkTarget: 'esp32s3',
-        compilerPackage: '@arduinofast/esp32-xtensa-clang-wasm',
+        compilerPackage: '@sketchforge/esp32-xtensa-clang-wasm',
         compilerPackId: 'xtensa-esp-elf-wasm', sourceBundleDir: 'esp32-xtensa-wasm',
         gccDriverPrefix: 'xtensa-esp32s3-elf',
       },
@@ -356,7 +356,7 @@ describe('browser ESP32 Xtensa runtime profiles', () => {
   });
 
   it('finds the S3 profile-specific sections.ld without accepting ambiguity', () => {
-    const root = mkdtempSync(join(tmpdir(), 'arduinofast-linker-inputs-'));
+    const root = mkdtempSync(join(tmpdir(), 'sketchforge-linker-inputs-'));
     try {
       const ldRoot = join(root, 'ld');
       const profileRoot = join(root, 'qio_qspi');

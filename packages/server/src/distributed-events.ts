@@ -1,4 +1,4 @@
-import type { CompileEvent, CompileResult } from '@arduinofast/core';
+import type { CompileEvent, CompileResult } from '@sketchforge/core';
 import type { Redis } from 'ioredis';
 import { compileRedisKey, type CompileRedisNamespace } from './compile-namespace.js';
 

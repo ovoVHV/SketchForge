@@ -106,7 +106,7 @@ test('audit rejects monolith commands restored as default server entry points', 
     overrides: {
       'package.json': JSON.stringify({
         ...rootPackage,
-        scripts: { ...rootPackage.scripts, dev: 'npm run dev:monolith --workspace @arduinofast/server' },
+        scripts: { ...rootPackage.scripts, dev: 'npm run dev:monolith --workspace @sketchforge/server' },
       }),
     },
   });

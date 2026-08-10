@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { createPlatformManifest, resolvePlatformManifestWithRust } from '@arduinofast/core';
+import { createPlatformManifest, resolvePlatformManifestWithRust } from '@sketchforge/core';
 
 import { loadPublishedPlatformManifests } from '../src/platform-manifests.js';
 

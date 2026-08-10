@@ -4,7 +4,8 @@
  * It intentionally does not prefetch the roughly 25 MB toolchain and never
  * handles API, artifact, navigation, or editor requests.
  */
-const CACHE_PREFIX = 'arduinofast-avr-toolchain-';
+const CACHE_PREFIX = 'sketchforge-avr-toolchain-';
+const LEGACY_CACHE_PREFIX = 'arduinofast-avr-toolchain-';
 const CACHE_NAME = `${CACHE_PREFIX}v3`;
 const CURRENT_AVR_PATH = new URL('avr/v4/', self.registration.scope).pathname;
 
@@ -18,6 +19,31 @@ function isToolchainRequest(request) {
     && (url.pathname.endsWith('.wasm') || url.pathname.endsWith('.pack'));
 }
 
+function isPreviousCacheName(name) {
+  return name !== CACHE_NAME
+    && (name.startsWith(CACHE_PREFIX) || name.startsWith(LEGACY_CACHE_PREFIX));
+}
+
+async function matchPreviousCache(request) {
+  const names = await caches.keys();
+  for (const name of names.filter(isPreviousCacheName)) {
+    const previous = await caches.open(name);
+    const response = await previous.match(request);
+    if (response) return response;
+  }
+  return null;
+}
+
+async function migratePreviousCache(name, current) {
+  const previous = await caches.open(name);
+  const requests = await previous.keys();
+  for (const request of requests) {
+    if (!isToolchainRequest(request) || await current.match(request)) continue;
+    const response = await previous.match(request);
+    if (response) await current.put(request, response.clone());
+  }
+}
+
 async function cacheFirst(request, finishCaching) {
   let cache;
   try {
@@ -28,6 +54,17 @@ async function cacheFirst(request, finishCaching) {
       if (cached) {
         finishCaching();
         return cached;
+      }
+      const previous = await matchPreviousCache(request);
+      if (previous) {
+        try {
+          void Promise.resolve(cache.put(request, previous.clone()))
+            .catch(() => {})
+            .finally(finishCaching);
+        } catch {
+          finishCaching();
+        }
+        return previous;
       }
     }
   } catch {
@@ -63,9 +100,16 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names
-      .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME)
-      .map((name) => caches.delete(name)));
+    let current = null;
+    try { current = await caches.open(CACHE_NAME); } catch { /* preserve old caches */ }
+    if (current) {
+      await Promise.all(names.filter(isPreviousCacheName).map(async (name) => {
+        try {
+          await migratePreviousCache(name, current);
+          await caches.delete(name);
+        } catch { /* retry lazily on a later fetch or activation */ }
+      }));
+    }
     await self.clients.claim();
   })());
 });

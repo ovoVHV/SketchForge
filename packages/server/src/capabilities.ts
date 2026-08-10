@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
-import { validateBlocksMetadata, type BlocksMetadata } from '@arduinofast/core';
+import { validateBlocksMetadata, type BlocksMetadata } from '@sketchforge/core';
 import { compileRedisKey, type CompileRedisNamespace } from './compile-namespace.js';
 import {
   assertRuntimeConfigurationNamespace,

@@ -1,6 +1,6 @@
 # License Files
 
-The root `LICENSE` covers original ArduinoFast source. The files in this
+The root `LICENSE` covers original SketchForge source. The files in this
 directory are retained for the generated `esptool.js` browser bundle and are
 provided under the terms of their respective upstream projects.
 

@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   const bundleId = process.env.AF_COMPILER_BUNDLE_ID;
   const identity = bundleId
     ? createHash('sha256')
-        .update('arduinofast-immutable-compiler-bundle-v1\0')
+        .update('sketchforge-immutable-compiler-bundle-v1\0')
         .update('esp32')
         .update('\0')
         .update(bundleId)

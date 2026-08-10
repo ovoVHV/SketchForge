@@ -20,7 +20,7 @@ import { toolPath } from '../toolchain/config.js';
 import { esp32SdkTargets, type BoardDefinition, type BoardRegistry } from '../toolchain/board.js';
 import type { Library } from '../toolchain/library.js';
 
-const IDENTITY_FORMAT = 'arduinofast-cache-identity-v1';
+const IDENTITY_FORMAT = 'sketchforge-cache-identity-v1';
 const EXE = platform() === 'win32' ? '.exe' : '';
 export type ToolchainIdentityScope = 'all' | 'avr' | 'esp32';
 
@@ -460,7 +460,7 @@ export async function nativeToolchainPackIdentityAsync(
   provenance?: { kind: 'bundle' | 'hint'; value: string },
 ): Promise<string> {
   const hash = createHash('sha256');
-  field(hash, 'arduinofast-native-toolchain-pack-v2');
+  field(hash, 'sketchforge-native-toolchain-pack-v2');
   field(hash, `scope:${scope}`);
   if (provenance) field(hash, `${provenance.kind}:${provenance.value}`);
 

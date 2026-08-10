@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>arduinofast 底座 · 参考客户端</title>
+<title>SketchForge 底座 · 参考客户端</title>
 <style>
   :root {
     --bg: #fbfbfd; --panel: #fff; --border: #e2e4e9; --text: #1c1e24;
@@ -178,15 +178,15 @@
 <body>
 
 <header>
-  <h1>arduinofast <span style="color:var(--muted);font-weight:400">底座参考客户端</span></h1>
+  <h1>SketchForge <span style="color:var(--muted);font-weight:400">底座参考客户端</span></h1>
   <select id="board"></select>
   <button id="btn-import-project" type="button" title="Import a project folder">Import folder</button>
   <button id="btn-add-files" type="button" title="Add source files to the project">Add files</button>
-  <button id="btn-import-archive" type="button" title="导入 ArduinoFast 项目文件">导入项目</button>
-  <button id="btn-export-project" type="button" title="导出 ArduinoFast 项目文件">导出项目</button>
+  <button id="btn-import-archive" type="button" title="导入 SketchForge 项目文件">导入项目</button>
+  <button id="btn-export-project" type="button" title="导出 SketchForge 项目文件">导出项目</button>
   <input id="project-folder-input" type="file" webkitdirectory directory multiple hidden>
   <input id="project-files-input" type="file" multiple hidden accept=".ino,.c,.cc,.cpp,.cxx,.S,.s,.asm,.h,.hh,.hpp,.hxx">
-  <input id="project-archive-input" type="file" hidden accept=".json,.arduinofast.json,application/json">
+  <input id="project-archive-input" type="file" hidden accept=".json,.sketchforge.json,application/json">
   <input id="project-id" value="default" aria-label="云项目名称" spellcheck="false">
   <button id="btn-cloud-save" type="button" title="保存到云端">云保存</button>
   <button id="btn-cloud-load" type="button" title="从云端恢复">云恢复</button>

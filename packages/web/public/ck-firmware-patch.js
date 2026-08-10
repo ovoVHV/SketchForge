@@ -1,4 +1,4 @@
-// Generated from @arduinofast/core firmware patching. Browser and test code share one implementation.
+// Generated from @sketchforge/core firmware patching. Browser and test code share one implementation.
 
 // packages/core/src/build-ir/canonical.ts
 function sha256Hex(input) {

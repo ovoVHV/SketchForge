@@ -1,4 +1,4 @@
-import type { BoardDefinition, CompileRequest, CompileResult } from '@arduinofast/core';
+import type { BoardDefinition, CompileRequest, CompileResult } from '@sketchforge/core';
 import { Queue, type Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import {

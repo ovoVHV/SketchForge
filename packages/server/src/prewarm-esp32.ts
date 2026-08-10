@@ -20,7 +20,7 @@ import {
   selectEsp32PrewarmBoards,
   type CompileEvent,
   type CompileResult,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { loadPublishedPlatformManifests } from './platform-manifests.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

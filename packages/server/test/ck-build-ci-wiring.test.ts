@@ -66,7 +66,7 @@ describe('CK Build CI wiring', () => {
 
   it('builds prerequisites before the contracts that consume them', () => {
     const contracts = jobSection('contracts', 'wasm-publication');
-    const coreBuild = position(contracts, 'npm run build --workspace @arduinofast/core');
+    const coreBuild = position(contracts, 'npm run build --workspace @sketchforge/core');
     expect(coreBuild).toBeGreaterThan(position(contracts, 'npm ci --omit=optional'));
     expect(coreBuild).toBeLessThan(position(contracts, 'npm run test:ck-library-matrix-contracts'));
     expect(coreBuild).toBeLessThan(position(contracts, 'npm run audit:ck-platform-profile-migration'));
@@ -101,7 +101,7 @@ describe('CK Build CI wiring', () => {
   it('builds Core before the scheduled Native action graph job', () => {
     const native = jobSection('native-action-graph', 'runtime-evidence');
     const install = position(native, 'npm ci --omit=optional');
-    const build = position(native, 'npm run build --workspace @arduinofast/core');
+    const build = position(native, 'npm run build --workspace @sketchforge/core');
     const execute = position(native, 'npm run verify:ck-native-action-graph-matrix');
     expect(install).toBeLessThan(build);
     expect(build).toBeLessThan(execute);

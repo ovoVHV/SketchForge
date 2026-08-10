@@ -30,7 +30,7 @@ measuring available memory.
 export LLVM_SOURCE=$PWD/llvm-project
 export BUILD_ROOT=$PWD/esp32-xtensa-wasm-build
 export WASI_SDK_ROOT=$PWD/wasi-sdk-29.0-x86_64-linux
-ESP32_XTENSA_WASM_JOBS=2 /path/to/arduinofast/scripts/build-esp32-xtensa-wasm.sh
+ESP32_XTENSA_WASM_JOBS=2 /path/to/sketchforge/scripts/build-esp32-xtensa-wasm.sh
 ```
 
 The host toolchain is the official WASI SDK 29.0 x86-64 Linux archive. Its

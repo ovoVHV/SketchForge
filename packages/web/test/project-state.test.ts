@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LEGACY_LIBRARY_STORAGE_KEY,
   LEGACY_PROJECT_STORAGE_KEY,
+  LEGACY_PROJECT_STATE_STORAGE_KEY,
   PROJECT_STATE_SCHEMA_VERSION,
   PROJECT_STATE_STORAGE_KEY,
   loadProjectState,
@@ -12,9 +13,11 @@ import {
 function memoryStorage(seed: Record<string, string> = {}, { failWrites = false } = {}) {
   const values = new Map(Object.entries(seed));
   const writes: Array<{ key: string; value: string }> = [];
+  const removes: string[] = [];
   return {
     values,
     writes,
+    removes,
     getItem(key: string) {
       return values.get(key) ?? null;
     },
@@ -22,6 +25,10 @@ function memoryStorage(seed: Record<string, string> = {}, { failWrites = false }
       if (failWrites) throw new Error('quota exceeded');
       writes.push({ key, value });
       values.set(key, value);
+    },
+    removeItem(key: string) {
+      removes.push(key);
+      values.delete(key);
     },
   };
 }
@@ -61,7 +68,26 @@ describe('browser project state v2', () => {
     expect(loadProjectState(storage)).toEqual(saved);
   });
 
-  it('loads the legacy split project and library keys', () => {
+  it('migrates the pre-rename v2 project key to the current key', () => {
+    const storage = memoryStorage({
+      [LEGACY_PROJECT_STATE_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: PROJECT_STATE_SCHEMA_VERSION,
+        ...completeState,
+      }),
+    });
+
+    expect(loadProjectState(storage)).toMatchObject({
+      schemaVersion: PROJECT_STATE_SCHEMA_VERSION,
+      activeFile: 'src/helper.cpp',
+      board: 'esp32:esp32:esp32c3',
+    });
+    expect(storage.writes.map(({ key }) => key)).toEqual([PROJECT_STATE_STORAGE_KEY]);
+    expect(storage.removes).toEqual([LEGACY_PROJECT_STATE_STORAGE_KEY]);
+    expect(storage.values.has(LEGACY_PROJECT_STATE_STORAGE_KEY)).toBe(false);
+    expect(storage.values.has(PROJECT_STATE_STORAGE_KEY)).toBe(true);
+  });
+
+  it('migrates the legacy split project and library keys', () => {
     const storage = memoryStorage({
       [LEGACY_PROJECT_STORAGE_KEY]: JSON.stringify({
         files: [{ name: 'main.ino', content: 'void loop() {}\n' }],
@@ -81,7 +107,9 @@ describe('browser project state v2', () => {
       options: {},
       libraries: [{ name: 'Servo', version: '1.2.2' }, { name: 'Wire' }],
     });
-    expect(storage.writes).toHaveLength(0);
+    expect(storage.writes.map(({ key }) => key)).toEqual([PROJECT_STATE_STORAGE_KEY]);
+    expect(storage.removes).toEqual([LEGACY_PROJECT_STORAGE_KEY, LEGACY_LIBRARY_STORAGE_KEY]);
+    expect([...storage.values.keys()]).toEqual([PROJECT_STATE_STORAGE_KEY]);
   });
 
   it('falls back to the sketch when the saved active file no longer exists', () => {
@@ -127,6 +155,19 @@ describe('browser project state v2', () => {
     expect(saveProjectState(quotaStorage, completeState)).toBe(false);
     expect(quotaStorage.values.size).toBe(0);
     expect(quotaStorage.writes).toHaveLength(0);
+  });
+
+  it('restores legacy state without deleting it when migration cannot be written', () => {
+    const storage = memoryStorage({
+      [LEGACY_PROJECT_STATE_STORAGE_KEY]: JSON.stringify({
+        schemaVersion: PROJECT_STATE_SCHEMA_VERSION,
+        ...completeState,
+      }),
+    }, { failWrites: true });
+
+    expect(loadProjectState(storage)?.activeFile).toBe('src/helper.cpp');
+    expect(storage.values.has(LEGACY_PROJECT_STATE_STORAGE_KEY)).toBe(true);
+    expect(storage.removes).toHaveLength(0);
   });
 
   it('rejects invalid state before touching storage', () => {

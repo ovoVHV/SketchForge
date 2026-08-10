@@ -35,7 +35,7 @@ import { singleFlight } from '../cache/singleflight.js';
 
 /** Arduino IDE 版本号宏，部分库会用它做条件编译 */
 const ARDUINO_VERSION_DEFINE = '10607';
-const AVR_DERIVED_CACHE_FORMAT = 'arduinofast-avr-derived-v2';
+const AVR_DERIVED_CACHE_FORMAT = 'sketchforge-avr-derived-v2';
 
 export interface AvrBuildResult {
   ok: boolean;
@@ -78,7 +78,7 @@ export class AvrToolchain {
       || (coveredByToolchainSnapshot && this.toolchainIdentityCoversInputs))
       && this.toolchainIdentity
       ? createHash('sha256')
-          .update('arduinofast-immutable-input-v1\0')
+          .update('sketchforge-immutable-input-v1\0')
           .update(this.toolchainIdentity)
           .update('\0')
           .update(path)

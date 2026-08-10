@@ -1,15 +1,15 @@
-name: arduinofast
+name: sketchforge
 
 x-common-env: &common-env
   # The base file is a local/pre-production entrypoint. Production trust is
   # enabled only by compose.distributed.production.yml.
   NODE_ENV: development
   AF_REDIS_URL: redis://redis:6379/0
-  AF_QUEUE_PREFIX: arduinofast-compile
+  AF_QUEUE_PREFIX: sketchforge-compile
   # The same immutable identity is also passed as a Docker build arg for a
   # prewarmed image. Keep both sides configurable through one value so a
   # correctly built seed is not rejected at worker startup.
-  AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-arduinofast-production-v2}"
+  AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-sketchforge-production-v2}"
   # Local Compose is explicitly unverified. The production override replaces
   # both values with a canonical, accepted runtime release.
   AF_COMPILE_RELEASE_ID: "${AF_COMPILE_RELEASE_ID:-unverified-local}"
@@ -141,7 +141,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.gateway
-    image: arduinofast/gateway:production-v2
+    image: sketchforge/gateway:production-v2
     restart: unless-stopped
     stop_grace_period: 30s
     depends_on:
@@ -210,7 +210,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.gateway
-    image: arduinofast/gateway:production-v2
+    image: sketchforge/gateway:production-v2
     command: [node, packages/server/dist/autoscale-cli.js]
     restart: unless-stopped
     stop_grace_period: 30s
@@ -257,9 +257,9 @@ services:
       dockerfile: docker/Dockerfile.worker-avr
       target: "${AF_AVR_IMAGE_TARGET:-final}"
       args:
-        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-arduinofast-production-v2}"
+        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-sketchforge-production-v2}"
         AF_PREWARM_BOARDS: "${AF_PREWARM_AVR_BOARDS:-}"
-    image: arduinofast/worker-avr:production-v2
+    image: sketchforge/worker-avr:production-v2
     cpus: 0.75
     mem_limit: 640m
     memswap_limit: 640m
@@ -280,10 +280,10 @@ services:
       target: "${AF_ESP32_IMAGE_TARGET:-final}"
       args:
         TARGET_FAMILY: xtensa
-        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-arduinofast-production-v2}"
+        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-sketchforge-production-v2}"
         AF_PREWARM_BOARDS: "${AF_PREWARM_XTENSA_BOARDS:-}"
         AF_PREWARM_MATRIX: "${AF_PREWARM_MATRIX:-all}"
-    image: arduinofast/worker-esp32-xtensa:3.3.7-v2
+    image: sketchforge/worker-esp32-xtensa:3.3.7-v2
     cpus: 1.0
     mem_limit: 1280m
     memswap_limit: 1280m
@@ -307,10 +307,10 @@ services:
       target: "${AF_ESP32_IMAGE_TARGET:-final}"
       args:
         TARGET_FAMILY: riscv
-        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-arduinofast-production-v2}"
+        AF_COMPILER_BUNDLE_ID: "${AF_COMPILER_BUNDLE_ID:-sketchforge-production-v2}"
         AF_PREWARM_BOARDS: "${AF_PREWARM_RISCV_BOARDS:-}"
         AF_PREWARM_MATRIX: "${AF_PREWARM_MATRIX:-all}"
-    image: arduinofast/worker-esp32-riscv:3.3.7-v2
+    image: sketchforge/worker-esp32-riscv:3.3.7-v2
     cpus: 1.0
     mem_limit: 1280m
     memswap_limit: 1280m

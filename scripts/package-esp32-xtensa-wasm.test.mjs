@@ -65,7 +65,7 @@ test('dry-run validates inputs and reports the complete jco/resource/npm plan', 
 });
 
 test('npm pack cannot include files outside the audited artifact whitelist', () => {
-  const root = mkdtempSync(join(tmpdir(), 'arduinofast-xtensa-pack-list-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'sketchforge-xtensa-pack-list-test-'));
   try {
     const template = join(SCRIPT_DIRECTORY, 'esp32-xtensa-wasm-package', 'artifact-package.json');
     const manifest = JSON.parse(readFileSync(template, 'utf8'));
@@ -163,7 +163,7 @@ test('version is explicit SemVer and never inferred from an LLVM tag', () => {
 });
 
 function makeFixture() {
-  const root = mkdtempSync(join(tmpdir(), 'arduinofast-xtensa-package-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'sketchforge-xtensa-package-test-'));
   const llvm = join(root, 'llvm-build', 'bin', 'llvm');
   const wasiPrefix = join(root, 'clang-resource-headers', 'wasi-prefix');
   mkdirSync(dirname(llvm), { recursive: true });

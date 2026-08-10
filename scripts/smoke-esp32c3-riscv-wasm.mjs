@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
-const EXPECTED_PACKAGE_NAME = '@arduinofast/esp32c3-clang-wasm';
+const EXPECTED_PACKAGE_NAME = '@sketchforge/esp32c3-clang-wasm';
 const EXPECTED_ENTRY = './gen/bundle.js';
 const TARGET = 'riscv32-esp-elf';
 const MARCH = 'rv32imc_zicsr_zifencei';
@@ -105,7 +105,7 @@ export async function smokeEsp32C3RiscvWasmArtifact(artifactPath, {
   }
 
   const artifact = prepareArtifact(artifactPath);
-  const runDirectory = mkdtempSync(join(tmpdir(), 'arduinofast-c3-wasm-smoke-'));
+  const runDirectory = mkdtempSync(join(tmpdir(), 'sketchforge-c3-wasm-smoke-'));
   const elfPath = join(runDirectory, 'smoke.elf');
   try {
     const metadata = validateArtifactPackage(artifact.packageDirectory);
@@ -368,7 +368,7 @@ function prepareTarball(tarballPath) {
   if (tarball.byteLength === 0 || tarball.byteLength > MAX_ARTIFACT_BYTES) {
     fail('ESP32-C3 RISC-V WASM artifact tarball has an invalid size');
   }
-  const extractionDirectory = mkdtempSync(join(tmpdir(), 'arduinofast-c3-wasm-package-'));
+  const extractionDirectory = mkdtempSync(join(tmpdir(), 'sketchforge-c3-wasm-package-'));
   try {
     extractNpmTarball(tarball, extractionDirectory);
     const packageDirectory = join(extractionDirectory, 'package');

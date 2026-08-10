@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LEGACY_PROJECT_ARCHIVE_FORMAT,
+  LEGACY_PROJECT_ARCHIVE_EXTENSION,
   MAX_PROJECT_ARCHIVE_BYTES,
+  PROJECT_ARCHIVE_EXTENSION,
+  PROJECT_ARCHIVE_FORMAT,
   decodeProjectArchive,
   encodeProjectArchive,
   projectArchiveFilename,
@@ -20,7 +24,9 @@ const project = {
 
 describe('portable project archives', () => {
   it('round-trips the complete normalized project state', () => {
-    const decoded = decodeProjectArchive(encodeProjectArchive(project));
+    const encoded = encodeProjectArchive(project);
+    expect(JSON.parse(encoded).format).toBe(PROJECT_ARCHIVE_FORMAT);
+    const decoded = decodeProjectArchive(encoded);
     expect(decoded).toMatchObject({
       schemaVersion: 2,
       activeFile: 'src/helper.cpp',
@@ -32,12 +38,23 @@ describe('portable project archives', () => {
       .toEqual(['main.ino', 'src/helper.cpp']);
   });
 
+  it('imports a pre-rename archive while keeping new exports on the current format', () => {
+    const legacy = JSON.parse(encodeProjectArchive(project));
+    legacy.format = LEGACY_PROJECT_ARCHIVE_FORMAT;
+
+    expect(decodeProjectArchive(JSON.stringify(legacy))).toMatchObject({
+      schemaVersion: 2,
+      board: 'arduino:avr:uno',
+    });
+    expect(encodeProjectArchive(project)).not.toContain(LEGACY_PROJECT_ARCHIVE_FORMAT);
+  });
+
   it('rejects malformed, unsupported, unsafe, and oversized archives', () => {
     expect(() => decodeProjectArchive('{')).toThrow(/valid JSON/);
     expect(() => decodeProjectArchive(JSON.stringify({ format: 'other', version: 1 })))
       .toThrow(/unsupported/);
     expect(() => decodeProjectArchive(JSON.stringify({
-      format: 'arduinofast-project',
+      format: 'sketchforge-project',
       version: 1,
       project: { schemaVersion: 2, ...project, files: [{ name: '../main.ino', content: '' }] },
     }))).toThrow(/invalid state/);
@@ -46,9 +63,11 @@ describe('portable project archives', () => {
   });
 
   it('creates bounded filesystem-safe download names', () => {
-    expect(projectArchiveFilename('  demo project / one  ')).toBe('demo-project-one.arduinofast.json');
+    expect(PROJECT_ARCHIVE_EXTENSION).toBe('.sketchforge.json');
+    expect(LEGACY_PROJECT_ARCHIVE_EXTENSION).toBe('.arduinofast.json');
+    expect(projectArchiveFilename('  demo project / one  ')).toBe(`demo-project-one${PROJECT_ARCHIVE_EXTENSION}`);
     expect(safeDownloadFilename('..\\bad/name?.bin', 'firmware.bin')).toBe('bad-name-.bin');
     expect(safeDownloadFilename('...')).toBe('project');
-    expect(projectArchiveFilename('')).toBe('project.arduinofast.json');
+    expect(projectArchiveFilename('')).toBe(`project${PROJECT_ARCHIVE_EXTENSION}`);
   });
 });

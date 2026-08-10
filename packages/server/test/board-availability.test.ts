@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import {
   BoardRegistry,
   type BoardDefinition,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { boardAvailabilityResponse, boardCompileOptionError } from '../src/board-availability.js';
 
 function board(fqbn: string, arch: BoardDefinition['arch']): BoardDefinition {

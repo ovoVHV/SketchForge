@@ -20,7 +20,7 @@ import {
   type BuildIR,
   type FeaturedPrebuildEntry,
   type JsonValue,
-} from '@arduinofast/core';
+} from '@sketchforge/core';
 import { createArtifactStore, type ArtifactStore } from './artifact-store.js';
 import { loadPublishedPlatformManifests } from './platform-manifests.js';
 import {

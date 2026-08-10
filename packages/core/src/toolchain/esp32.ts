@@ -51,7 +51,7 @@ const ARDUINO_VERSION_DEFINE = '10607';
 const ESP32_PLATFORM_DEFINE = '-DESP32=ESP32';
 // v3: target-specific Xtensa launchers select the required little-endian
 // dynconfig; v2 archives built through the generic launcher are incompatible.
-const ESP32_DERIVED_CACHE_FORMAT = 'arduinofast-esp32-derived-v4';
+const ESP32_DERIVED_CACHE_FORMAT = 'sketchforge-esp32-derived-v4';
 /** 预编译头的文件名。GCC 在准备打开 `X` 时会先找同目录的 `X.gch` */
 const PCH_HEADER = 'af_pch.h';
 const PCH_SOURCE = '#include <Arduino.h>\n';
@@ -247,7 +247,7 @@ export class Esp32Toolchain {
       || (coveredByToolchainSnapshot && this.toolchainIdentityCoversInputs))
       && this.toolchainIdentity
       ? createHash('sha256')
-          .update('arduinofast-immutable-input-v1\0')
+          .update('sketchforge-immutable-input-v1\0')
           .update(this.toolchainIdentity)
           .update('\0')
           .update(path)
@@ -261,7 +261,7 @@ export class Esp32Toolchain {
     const profile = resolveEsp32BuildProfile(board, opts);
     if (this.toolchainIdentity) {
       return createHash('sha256')
-        .update('arduinofast-esp32-sdk-profile-v1\0')
+        .update('sketchforge-esp32-sdk-profile-v1\0')
         .update(this.toolchainIdentity)
         .update('\0')
         .update(profile.sdkTarget)

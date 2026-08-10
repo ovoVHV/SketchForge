@@ -3,11 +3,14 @@ import {
   normalizeStoredCompile,
 } from './compile-recovery.js';
 
-export const ACTIVE_COMPILE_DB_NAME = 'arduinofast-recovery';
+export const ACTIVE_COMPILE_DB_NAME = 'sketchforge-recovery';
+export const LEGACY_ACTIVE_COMPILE_DB_NAME = 'arduinofast-recovery';
 export const ACTIVE_COMPILE_DB_VERSION = 1;
 export const ACTIVE_COMPILE_STORE_NAME = 'active-compiles';
 export const ACTIVE_COMPILE_RECORD_KEY = 'current';
-export const ACTIVE_COMPILE_TAB_ID_KEY = 'arduinofast.active-compile.tab.v1';
+export const ACTIVE_COMPILE_STORAGE_KEY = 'sketchforge.active-compile.v1';
+export const ACTIVE_COMPILE_TAB_ID_KEY = 'sketchforge.active-compile.tab.v1';
+export const LEGACY_ACTIVE_COMPILE_TAB_ID_KEY = 'arduinofast.active-compile.tab.v1';
 export const LEGACY_ACTIVE_COMPILE_STORAGE_KEY = 'arduinofast.active-compile.v1';
 
 function validRecordKey(value) {
@@ -26,6 +29,14 @@ export function activeCompileTabId(storage, createId = () => (
   try {
     const existing = storage?.getItem?.(ACTIVE_COMPILE_TAB_ID_KEY);
     if (validRecordKey(existing)) return existing;
+    const legacyExisting = storage?.getItem?.(LEGACY_ACTIVE_COMPILE_TAB_ID_KEY);
+    if (validRecordKey(legacyExisting)) {
+      try {
+        storage?.setItem?.(ACTIVE_COMPILE_TAB_ID_KEY, legacyExisting);
+        storage?.removeItem?.(LEGACY_ACTIVE_COMPILE_TAB_ID_KEY);
+      } catch { /* retain the old ID when storage migration is blocked */ }
+      return legacyExisting;
+    }
     const created = String(createId?.() ?? '');
     if (!validRecordKey(created)) throw new Error('Unable to create active compile tab ID');
     storage?.setItem?.(ACTIVE_COMPILE_TAB_ID_KEY, created);
@@ -123,8 +134,12 @@ function writeStorageRecord(storage, key, record) {
 export function createIndexedDbActiveCompileStore(
   indexedDb = globalThis.indexedDB,
   recordKey = ACTIVE_COMPILE_RECORD_KEY,
+  databaseName = ACTIVE_COMPILE_DB_NAME,
 ) {
   if (!validRecordKey(recordKey)) throw new TypeError('Invalid active compile record key');
+  if (typeof databaseName !== 'string' || !databaseName || databaseName.includes('\0')) {
+    throw new TypeError('Invalid active compile database name');
+  }
   let opening = null;
   let openedDatabase = null;
 
@@ -147,7 +162,7 @@ export function createIndexedDbActiveCompileStore(
         reject(error);
       };
       try {
-        request = indexedDb.open(ACTIVE_COMPILE_DB_NAME, ACTIVE_COMPILE_DB_VERSION);
+        request = indexedDb.open(databaseName, ACTIVE_COMPILE_DB_VERSION);
       } catch (error) {
         fail(error);
         return;
@@ -299,12 +314,16 @@ export function createActiveCompilePersistence({
   legacyKey = LEGACY_ACTIVE_COMPILE_STORAGE_KEY,
   legacyKeys = [],
   legacyDurables = [],
+  storageKey = ACTIVE_COMPILE_STORAGE_KEY,
   logger = console,
   onStatus = () => {},
   now = () => Date.now(),
 } = {}) {
+  if (!validRecordKey(storageKey)) throw new TypeError('Invalid active compile storage key');
   const storages = [...new Set([...legacyStorages, fallbackStorage].filter(Boolean))];
-  const allLegacyKeys = [...new Set([legacyKey, ...legacyKeys].filter((key) => validRecordKey(key)))];
+  const legacyOnlyKeys = [...new Set([legacyKey, ...legacyKeys]
+    .filter((key) => validRecordKey(key) && key !== storageKey))];
+  const fallbackKeys = [storageKey, ...legacyOnlyKeys];
   const oldDurables = [...legacyDurables].filter(Boolean);
   let generation = 0;
   let lastSavedAt = 0;
@@ -317,7 +336,7 @@ export function createActiveCompilePersistence({
     if (event.error) {
       try {
         logger?.warn?.(
-          `[ArduinoFast] Active compile ${event.operation} is not durable; using ${event.persistence}.`,
+          `[SketchForge] Active compile ${event.operation} is not durable; using ${event.persistence}.`,
           event.error,
         );
       } catch { /* logging must not affect recovery */ }
@@ -326,7 +345,7 @@ export function createActiveCompilePersistence({
   }
 
   function removeLegacyAtOrBefore(record) {
-    for (const key of allLegacyKeys) {
+    for (const key of fallbackKeys) {
       for (const storage of storages) {
         removeStorageRecord(storage, key, (saved) => compareRecordFreshness(saved, record) <= 0);
       }
@@ -334,7 +353,7 @@ export function createActiveCompilePersistence({
   }
 
   function removeLegacyJob(jobId, acceptanceId) {
-    for (const key of allLegacyKeys) {
+    for (const key of fallbackKeys) {
       for (const storage of storages) {
         removeStorageRecord(storage, key, (saved) => saved.jobId === jobId
           && (acceptanceId === undefined
@@ -353,7 +372,7 @@ export function createActiveCompilePersistence({
   }
 
   function legacyRecords() {
-    return storages.flatMap((storage) => allLegacyKeys
+    return storages.flatMap((storage) => fallbackKeys
       .map((key) => safeStorageRecord(storage, key))
       .filter(Boolean));
   }
@@ -409,7 +428,14 @@ export function createActiveCompilePersistence({
         return emit({ operation, persistence: 'indexeddb', durable: true, record: next });
       } catch (error) {
         if (token !== generation) return stale(operation);
-        const persistedForSession = writeStorageRecord(fallbackStorage, legacyKey, next);
+        const persistedForSession = writeStorageRecord(fallbackStorage, storageKey, next);
+        if (persistedForSession) {
+          for (const key of legacyOnlyKeys) {
+            for (const storage of storages) {
+              removeStorageRecord(storage, key, (saved) => compareRecordFreshness(saved, next) <= 0);
+            }
+          }
+        }
         return emit({
           operation,
           persistence: persistedForSession ? 'session' : 'memory',

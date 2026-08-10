@@ -631,7 +631,7 @@ async function run(options) {
     descriptorName: runtime.descriptorName,
     captureElf: options.captureElf,
   });
-  const profileDir = mkdtempSync(join(tmpdir(), 'arduinofast-c3-chromium-'));
+  const profileDir = mkdtempSync(join(tmpdir(), 'sketchforge-c3-chromium-'));
   let browser;
   let browserLog = '';
   let hardwareCompletion;
