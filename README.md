@@ -56,6 +56,26 @@ Mega、ESP32-C5、ESP32-H2 和 ESP32-P4 的板卡定义与规划代码仍保留�
 
 “支持”表示当前板卡路径和对应运行资产有实现或验证，不表示每一个处理器选项、分区组合和第三方库都已经逐一验证。库兼容会随着新的 Pack 测试和发布持续增加。
 
+### 已验证的 16 路并发编译
+
+2026-08-10，我们用同一个浏览器会话启动了 `16` 份互不相同的 ESP32 源码，覆盖 ESP32、ESP32-C3、ESP32-C6、ESP32-S2 和 ESP32-S3。`16/16` 全部编译成功，失败数为 `0`；16 路任务有约 `59` 秒的完整重叠执行窗口，单任务页面耗时约 `59-113` 秒。
+
+这里的“16 路并发”指浏览器本地编译：每个任务在独立的 Web Worker 和项目快照中运行，服务器主要分发页面与版本化资产。它不是“一台服务器同时运行 16 个编译器”，也不是对一千名首次冷启动用户的容量承诺。工具链和 SDK 等不可变资产仍可能被同源浏览器缓存，完整边界记录见 [MIXLU.md](MIXLU.md)。
+
+### 并发问题的后续解决路线
+
+并发不是靠把所有编译都堆到一台小服务器上解决，而是按请求类型分层：
+
+| 层级 | 做法 | 解决的问题 |
+| --- | --- | --- |
+| 浏览器编译 | Web Worker + WASM，编译 CPU 由用户设备分担 | 大多数用户不占用服务器编译 CPU |
+| 资产分发 | WASM、Board Pack、SDK 和库按版本固定摘要发布到 CDN，浏览器预取并长期缓存 | 避免每个用户重复下载大文件，降低源站带宽峰值 |
+| 服务端兜底 | Gateway 接收请求，Redis/BullMQ 排队，按 AVR、ESP32 Xtensa、ESP32 RISC-V 分池 | 浏览器不支持的板卡仍有可靠路径 |
+| 横向扩容 | 增加同版本 Worker，按队列长度和 CPU/内存自动扩容；每个任务使用独立临时目录 | 把并发编译能力从单机容量变成 Worker 池容量 |
+| 流量保护 | 每用户配额、队列上限、取消任务、超时、幂等键和失败重试 | 高峰时不让内存、磁盘和队列失控 |
+
+当前公开版已经完成浏览器侧的 16 路验证；下一阶段才是给服务端 Worker 做独立的冷启动、排队、扩容和故障恢复压测。这样即使同时有很多人访问，静态页面和编译任务也不会互相拖垮。
+
 ### 为什么不需要下载 Arduino CLI
 
 SketchForge 把编辑器、版本化工具链和项目 API 放在网页端。支持的编译任务在每位用户自己的浏览器 Worker 中运行，服务器主要负责页面、资产和项目资料分发；因此用户不需要先下载体积很大的 Arduino CLI，服务器也不需要为每个访问者启动一个完整编译器。
@@ -104,7 +124,7 @@ SketchForge 把编辑器、版本化工具链和项目 API 放在网页端。支
 
 #### 容量和后续路线
 
-浏览器优先架构让服务器主要承载网页、资产、API 和项目资料，编译 CPU 主要由访问者设备承担。这是面向大量访问者的设计方向，但不等于一台小 VPS 已验证可以同时运行一千个服务端编译器；实际容量还取决于带宽、访问者设备、缓存命中率、库 Pack 和服务端兜底 worker 数量。
+浏览器优先架构让服务器主要承载网页、资产、API 和项目资料，编译 CPU 主要由访问者设备承担。当前已经有单浏览器会话 `16` 份唯一源码并发成功的实测证据；这说明架构方向可行，但不等于一台小 VPS 已验证可以同时运行一千个服务端编译器。真实容量还取决于静态资源带宽、访问者设备、缓存命中率、库 Pack 和服务端兜底 Worker 数量。
 
 静态 HTTP 压测脚本只验证网页和资产分发，不提交编译任务：
 
@@ -117,6 +137,9 @@ node scripts/bench-static-http.mjs
 
 下一步工作：
 
+- [x] 完成 16 份唯一源码的浏览器并发编译验证。
+- [ ] 为服务端兜底建立按架构分池的 Worker，加入队列背压、自动扩容、取消、超时和失败重试。
+- [ ] 把大体积编译资产放到 CDN，完成冷缓存下载、弱设备和长稳并发压测。
 - [ ] 接入真实硬件 runner，扩大自动化实板验证；当前用户已经可以通过浏览器 Web Serial 完成烧录。
 
 发布可再分发的 AVR 编译资产前，AVR GPL 对应源码是商业公开发布门禁；Arduino、Espressif、GNU、LLVM、第三方库和工具链资产继续遵循各自许可证。
@@ -205,9 +228,24 @@ The hosted instance has the matching runtime assets already published. A fresh c
 ### Engineering notes
 
 - Projects are bounded to 128 files, 2 MiB of UTF-8 source, and 8 MiB complete JSON requests.
+- A single browser session has been verified compiling 16 unique ESP32 sketches concurrently, with all 16 builds succeeding. This measures browser-side capacity, not 16 server workers and not a promise for 1,000 cold-start users.
 - The production browser-first path is designed to move compile CPU to users' devices. It is not a claim that one small VPS can run one thousand server-side compiler processes.
 - The distributed queue and worker path is included for deployments that need a server fallback; a hosted deployment must provision the matching worker runtime and immutable assets.
 - The next automation item is a real hardware runner. Browser Web Serial flashing is already part of the user workflow.
+
+### Concurrency roadmap
+
+The scaling plan is deliberately layered:
+
+| Layer | Plan | Why it matters |
+| --- | --- | --- |
+| Browser builds | Compile in isolated Web Workers with WASM on each user's device | Most compile CPU stays off the server |
+| Asset delivery | Publish immutable WASM, Board Packs, SDKs, and libraries by digest through a CDN, with prefetching | Removes repeated large downloads from the origin |
+| Server fallback | Route through Gateway and Redis/BullMQ queues, with separate AVR, Xtensa, and RISC-V pools | Keeps unsupported or blocked browser builds reliable |
+| Horizontal scale | Add matching Workers and autoscale from queue depth and CPU/memory pressure; use a temporary directory per job | Turns concurrency into a pool-sizing problem instead of a single-host limit |
+| Protection | Per-visitor quotas, admission control, cancellation, timeouts, idempotency, and bounded retries | Prevents spikes from exhausting memory, disk, or the queue |
+
+The 16-build browser test is complete. Cold-start, queue, autoscaling, and failure-recovery tests for the server fallback remain a separate release stage.
 
 ### Development checks
 

@@ -3,276 +3,576 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SketchForge 底座 · 参考客户端</title>
+<title>SketchForge IDE</title>
 <style>
   :root {
-    --bg: #fbfbfd; --panel: #fff; --border: #e2e4e9; --text: #1c1e24;
-    --muted: #6b7280; --accent: #2563eb; --ok: #059669; --err: #dc2626; --warn: #d97706;
-    --mono: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, monospace;
+    color-scheme: dark;
+    --canvas: #0b0e13;
+    --surface: #11161e;
+    --surface-raised: #171e28;
+    --surface-hover: #1d2733;
+    --surface-active: #182c3b;
+    --line: #273241;
+    --line-soft: #202936;
+    --ink: #e8edf5;
+    --muted: #8b98aa;
+    --faint: #5d6979;
+    --cyan: #42c8e8;
+    --cyan-strong: #16a8ce;
+    --green: #28c58a;
+    --amber: #efb34d;
+    --red: #f07178;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   }
-  @media (prefers-color-scheme: dark) {
+  @media (prefers-color-scheme: light) {
     :root {
-      --bg: #16181d; --panel: #1d2027; --border: #2e323b; --text: #e6e8ec;
-      --muted: #9aa1ad; --accent: #60a5fa; --ok: #34d399; --err: #f87171; --warn: #fbbf24;
+      color-scheme: light;
+      --canvas: #eef2f6;
+      --surface: #f8fafc;
+      --surface-raised: #ffffff;
+      --surface-hover: #e8eef4;
+      --surface-active: #dff4fa;
+      --line: #d4dce5;
+      --line-soft: #e2e8ef;
+      --ink: #17212b;
+      --muted: #637386;
+      --faint: #8b99a8;
+      --cyan: #087f9e;
+      --cyan-strong: #056b84;
+      --green: #087f5b;
+      --amber: #a96808;
+      --red: #c23d4b;
     }
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-    display: flex; flex-direction: column;
+    margin: 0;
+    min-width: 320px;
+    overflow: hidden;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 13px/1.45 var(--sans);
+    display: flex;
+    flex-direction: column;
   }
-  header {
-    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel);
-    flex: 0 0 auto; position: relative;
+  button, input, select { font: inherit; }
+  button, select, input {
+    color: var(--ink);
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
   }
-  header h1 { font-size: 15px; margin: 0; font-weight: 650; }
-  header .sep { flex: 1; }
-  select, button {
-    font: inherit; padding: 6px 12px; border-radius: 7px;
-    border: 1px solid var(--border); background: var(--panel); color: var(--text); cursor: pointer;
+  button {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease;
   }
-  #board-config { position: static; }
-  #board-config > summary {
-    list-style: none; padding: 6px 12px; border: 1px solid var(--border); border-radius: 7px;
-    background: var(--panel); cursor: pointer; user-select: none;
+  button:hover:not(:disabled) { background: var(--surface-hover); border-color: #3a495a; }
+  button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--cyan) 70%, transparent);
+    outline-offset: 1px;
   }
-  #board-config > summary::-webkit-details-marker { display: none; }
-  #board-config[open] > summary { border-color: var(--accent); }
+  button:disabled { cursor: not-allowed; opacity: .48; }
+  select, input { border-radius: 6px; }
+  select { min-width: 0; padding: 6px 30px 6px 10px; }
+  input { padding: 6px 8px; }
+  [hidden] { display: none !important; }
+
+  /* Top application bar */
+  .topbar {
+    position: relative;
+    z-index: 20;
+    flex: 0 0 58px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+  .brand-mark {
+    display: grid; place-items: center;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--cyan);
+    color: #06202a;
+    font-size: 19px;
+    font-weight: 800;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+  }
+  .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .01em; }
+  .brand-badge {
+    padding: 1px 5px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--cyan);
+    font: 10px var(--mono);
+  }
+  .topbar-divider { width: 1px; height: 24px; background: var(--line); }
+  .project-menu, #board-config { position: relative; }
+  .project-menu > summary, #board-config > summary {
+    display: inline-flex; align-items: center; gap: 7px;
+    min-height: 32px;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--ink);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .project-menu > summary::-webkit-details-marker, #board-config > summary::-webkit-details-marker { display: none; }
+  .project-menu > summary:hover, #board-config > summary:hover,
+  .project-menu[open] > summary, #board-config[open] > summary {
+    background: var(--surface-hover);
+    border-color: var(--line);
+  }
+  .summary-icon, .button-icon, .rail-icon, .file-icon, .board-icon { color: var(--cyan); font-weight: 700; }
+  .chevron { color: var(--muted); font-size: 14px; }
+  .menu-popover {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 330px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-raised);
+    box-shadow: 0 18px 44px rgb(0 0 0 / 35%);
+  }
+  .menu-title, .eyebrow {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .menu-title { margin-bottom: 8px; }
+  .menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .menu-actions button { display: flex; align-items: center; gap: 7px; justify-content: flex-start; font-size: 12px; }
+  .cloud-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+  .cloud-row input { min-width: 0; font: 11px var(--mono); }
+  .cloud-row button { font-size: 11px; }
+  .board-picker {
+    flex: 0 1 430px;
+    margin-left: clamp(8px, 8vw, 120px);
+    display: flex; align-items: center; gap: 8px;
+    width: min(430px, 100%);
+    min-width: 0;
+    padding: 3px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--canvas);
+  }
+  .board-picker select { flex: 1; width: 100%; border: 0; background: transparent; padding: 5px 24px 5px 0; font-weight: 650; }
+  .topbar-spacer { flex: 1 1 auto; min-width: 0; }
+  .top-actions { display: flex; align-items: center; gap: 7px; }
+  .top-actions button { white-space: nowrap; }
+  #board-config > summary { width: 32px; justify-content: center; padding: 4px; }
   #board-options {
-    position: absolute; z-index: 10; top: calc(100% + 8px); right: 16px;
+    position: absolute; z-index: 30; top: calc(100% + 8px); right: 0;
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;
-    width: min(620px, calc(100vw - 32px)); max-height: min(560px, 70vh); overflow: auto;
-    padding: 12px; border: 1px solid var(--border); border-radius: 6px;
-    background: var(--panel); box-shadow: 0 10px 24px rgb(0 0 0 / 18%);
+    width: min(620px, calc(100vw - 24px)); max-height: min(560px, 70vh); overflow: auto;
+    padding: 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface-raised); box-shadow: 0 18px 44px rgb(0 0 0 / 35%);
   }
-  .board-option { display: grid; gap: 4px; min-width: 0; font-size: 12px; }
+  .board-option { display: grid; gap: 4px; min-width: 0; font-size: 11px; }
   .board-option > span { color: var(--muted); overflow-wrap: anywhere; }
   .board-option select { width: 100%; min-width: 0; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  button.primary.cancel { background: var(--err); border-color: var(--err); }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 0; flex: 1; min-height: 0; }
-  @media (max-width: 900px) {
-    body { height: auto; min-height: 100%; }
-    main { grid-template-columns: 1fr; flex: none; }
-    .editor { height: 320px; border-right: 0; border-bottom: 1px solid var(--border); }
-  }
-  @media (max-width: 600px) {
-    #board-options { left: 16px; right: 16px; width: auto; grid-template-columns: minmax(0, 1fr); }
-  }
+  button.primary { background: var(--cyan-strong); border-color: var(--cyan-strong); color: #f4fdff; font-weight: 750; }
+  button.primary:hover:not(:disabled) { background: var(--cyan); border-color: var(--cyan); color: #06202a; }
+  button.primary.cancel { background: var(--red); border-color: var(--red); color: #fff; }
+  #btn-compile::before { content: "✓"; margin-right: 6px; font-weight: 900; }
+  #btn-compile.cancel::before { content: "×"; }
+  #btn-flash::before { content: "→"; margin-right: 6px; color: var(--green); font-weight: 900; }
+  #btn-monitor::before { content: ">_"; margin-right: 6px; color: var(--cyan); font: 11px var(--mono); }
 
-  /* ---- 编辑器：行号槽 + textarea 严格对齐 ---- */
-  .editor { display: flex; overflow: hidden; border-right: 1px solid var(--border); background: var(--panel); }
-  .gutter {
-    padding: 12px 8px 12px 12px; text-align: right; user-select: none;
-    font: 13px/21px var(--mono); color: var(--muted);
-    background: var(--bg); border-right: 1px solid var(--border); overflow: hidden; min-width: 52px;
+  /* IDE workspace */
+  .app-main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 44px 286px minmax(0, 1fr);
+    background: var(--canvas);
   }
-  .gutter div { white-space: pre; }
-  .gutter div.has-error { color: var(--err); font-weight: 700; }
-  .gutter div.has-warn  { color: var(--warn); font-weight: 700; }
-  textarea#code {
-    flex: 1; border: 0; outline: 0; resize: none; padding: 12px;
-    font: 13px/21px var(--mono); background: var(--panel); color: var(--text);
-    tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto;
+  .activity-rail {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 10px 6px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
   }
-
-  aside { display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
-  .section { border-bottom: 1px solid var(--border); padding: 10px 14px; }
-  .section h2 {
-    font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--muted); margin: 0 0 8px;
+  .rail-icon-button {
+    display: grid; place-items: center;
+    width: 32px; height: 36px; padding: 0;
+    border: 1px solid transparent; border-radius: 6px;
+    background: transparent; color: var(--muted); font-size: 18px;
   }
-  .status-progress { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-  .status { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
-  .progress-ring {
-    position: relative; flex: 0 0 44px; width: 44px; height: 44px;
-    color: var(--accent);
+  .rail-icon-button.active { color: var(--cyan); background: var(--surface-active); border-color: rgb(66 200 232 / 20%); }
+  .rail-icon-button:hover:not(:disabled) { color: var(--ink); background: var(--surface-hover); }
+  .rail-bottom { margin-top: auto; display: grid; gap: 8px; }
+  .explorer-panel {
+    min-width: 0; min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
   }
-  .progress-ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
-  .progress-ring circle { fill: none; stroke-width: 4; }
-  .progress-ring-track { stroke: var(--border); }
-  .progress-ring-value {
-    stroke: currentColor; stroke-linecap: round; stroke-dasharray: 113.097;
-    stroke-dashoffset: 113.097; transition: stroke-dashoffset .15s ease;
-  }
-  .progress-ring-label {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    font: 10px/1 var(--mono); color: var(--muted); pointer-events: none;
-  }
-
-  .mem { display: grid; gap: 6px; font: 12px/1.4 var(--mono); }
-  .mem .row { display: grid; grid-template-columns: 46px 1fr auto; gap: 8px; align-items: center; }
-  .mem .track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-  .mem .track > i { display: block; height: 100%; background: var(--ok); }
-  .mem .track > i.high { background: var(--warn); }
-  .mem .track > i.full { background: var(--err); }
-
-  #diags { flex: 1; overflow-y: auto; padding: 6px 0; min-height: 120px; }
-  .diag {
-    padding: 7px 14px; border-left: 3px solid transparent; cursor: pointer; font-size: 13px;
-  }
-  .diag:hover { background: var(--bg); }
-  .diag.error { border-left-color: var(--err); }
-  .diag.warning { border-left-color: var(--warn); }
-  .diag.info { border-left-color: var(--muted); }
-  .diag .loc { font: 11px var(--mono); color: var(--muted); }
-  .diag .tag {
-    display: inline-block; font-size: 10px; padding: 0 5px; border-radius: 3px;
-    background: var(--border); color: var(--muted); margin-left: 6px;
-  }
-  .empty { color: var(--muted); padding: 14px; font-size: 13px; }
-
-  #monitor {
-    height: 150px; overflow-y: auto; margin: 0; padding: 10px 14px;
-    font: 12px/1.55 var(--mono); background: var(--bg); white-space: pre-wrap; word-break: break-all;
-  }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 15px 14px 10px; }
+  .sidebar-header h2 { margin: 3px 0 0; font-size: 14px; font-weight: 700; }
+  .sidebar-actions { display: flex; gap: 4px; }
+  .icon-button { width: 29px; min-height: 29px; padding: 0; display: grid; place-items: center; font-size: 17px; }
+  .workspace-label { display: flex; align-items: center; gap: 7px; margin: 0 12px 9px; padding: 7px 8px; border: 1px solid var(--line-soft); border-radius: 6px; color: var(--muted); font-size: 11px; }
+  .workspace-label strong { color: var(--ink); font-weight: 650; }
+  .workspace-label .dirty-dot { width: 6px; height: 6px; margin-left: auto; border-radius: 50%; background: var(--green); }
+  .section { border-bottom: 1px solid var(--line-soft); padding: 10px 12px; }
+  .section h2 { margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+  .project-section { flex: 0 0 auto; padding-top: 0; }
   .project-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
   .project-section-heading h2 { margin: 0; }
-  .project-section-heading button { padding: 3px 7px; font-size: 11px; }
+  .section-meta { color: var(--muted); font-size: 10px; }
+  .project-section-heading button { padding: 1px 7px; min-height: 25px; font-size: 17px; line-height: 1; }
   .project-file-editor { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; margin-bottom: 7px; }
   .project-file-editor[hidden] { display: none; }
-  .project-file-editor input { min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--panel); color: var(--text); font: 11px var(--mono); }
-  .project-file-editor button { padding: 3px 7px; font-size: 11px; }
-  .project-files { display: grid; gap: 4px; max-height: 180px; overflow: auto; }
-  .project-file { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; align-items: center; }
-  .project-file button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; padding: 4px 7px; }
-  .project-file button.active { border-color: var(--accent); color: var(--accent); }
-  .project-file .rename { padding: 3px 6px; font-size: 10px; }
-  .project-file .remove { padding: 3px 7px; color: var(--err); }
-  .artifact-list { display: grid; gap: 5px; }
-  .artifact-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-  .artifact-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px var(--mono); }
-  .artifact-row button { padding: 3px 7px; font-size: 11px; }
-  #project-id { width: 110px; min-width: 0; }
-  .library-section { max-height: 360px; overflow: hidden; }
-  #library-filter { width: 100%; margin-bottom: 7px; }
-  .library-import-form {
-    display: grid; grid-template-columns: minmax(120px, 1fr) minmax(64px, 84px) auto;
-    gap: 5px; align-items: center; margin-bottom: 3px;
-  }
-  .library-import-form input, #library-filter {
-    min-width: 0; width: 100%; padding: 5px 7px; border: 1px solid var(--border);
-    border-radius: 6px; background: var(--panel); color: var(--text); font: inherit;
-  }
-  .library-import-form button { min-width: 50px; padding: 5px 8px; }
-  .library-import-status {
-    min-height: 18px; max-height: 48px; margin-bottom: 3px; overflow: auto; color: var(--muted);
-    font-size: 11px; line-height: 16px; overflow-wrap: anywhere;
-  }
-  .library-import-status[data-state="success"] { color: var(--ok); }
-  .library-import-status[data-state="error"] { color: var(--err); }
-  .library-import-status[data-state="busy"] { color: var(--accent); }
-  #library-list { display: grid; gap: 3px; max-height: 205px; overflow: auto; }
-  .library-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 12px; }
+  .project-file-editor input { min-width: 0; width: 100%; padding: 4px 6px; background: var(--canvas); font: 11px var(--mono); }
+  .project-file-editor button { padding: 3px 7px; min-height: 25px; font-size: 11px; }
+  .project-files { display: grid; gap: 2px; max-height: 210px; overflow: auto; }
+  .project-file { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 3px; align-items: center; }
+  .project-file button { min-width: 0; min-height: 28px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; padding: 4px 7px; border-color: transparent; background: transparent; font: 12px var(--mono); }
+  .project-file button:hover:not(:disabled) { background: var(--surface-hover); }
+  .project-file button.active { border-color: rgb(66 200 232 / 24%); background: var(--surface-active); color: var(--cyan); }
+  .project-file .rename, .project-file .remove { width: 25px; padding: 2px; color: var(--muted); font-size: 0; text-align: center; }
+  .project-file .rename::before { content: "✎"; font-size: 12px; }
+  .project-file .remove::before { content: "×"; font-size: 14px; }
+  .project-file .remove { color: var(--red); }
+  .library-section { flex: 1 1 auto; min-height: 150px; overflow: hidden; display: flex; flex-direction: column; }
+  #library-filter { width: 100%; margin-bottom: 7px; background: var(--canvas); }
+  .library-import-form { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(58px, 76px) auto; gap: 5px; align-items: center; margin-bottom: 3px; }
+  .library-import-form input { min-width: 0; width: 100%; padding: 5px 7px; background: var(--canvas); font-size: 11px; }
+  .library-import-form button { min-width: 42px; padding: 5px 7px; font-size: 11px; }
+  .library-import-status { min-height: 18px; max-height: 48px; margin-bottom: 3px; overflow: auto; color: var(--muted); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
+  .library-import-status[data-state="success"] { color: var(--green); }
+  .library-import-status[data-state="error"] { color: var(--red); }
+  .library-import-status[data-state="busy"] { color: var(--cyan); }
+  #library-list { display: grid; gap: 3px; flex: 1; max-height: none; overflow: auto; }
+  .library-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 11px; }
   .library-row label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .library-row small { color: var(--muted); }
-  .library-row button { padding: 2px 6px; font-size: 11px; }
-  code { font-family: var(--mono); background: var(--bg); padding: 1px 4px; border-radius: 3px; }
+  .library-row button { min-height: 24px; padding: 2px 6px; font-size: 10px; }
+  .sidebar-footer { padding: 10px 12px 12px; border-top: 1px solid var(--line-soft); }
+  .cloud-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  .cloud-label span { color: var(--faint); font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .cloud-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; }
+  .cloud-row input { min-width: 0; background: var(--canvas); font: 11px var(--mono); }
+  .cloud-row button { min-height: 27px; padding: 3px 7px; font-size: 10px; }
+  .cloud-hint { align-self: center; color: var(--muted); font-size: 10px; white-space: nowrap; }
+
+  .editor-workspace { min-width: 0; min-height: 0; display: grid; grid-template-rows: 42px minmax(240px, 1fr) 214px 27px; background: var(--canvas); }
+  .editor-tabs { display: flex; align-items: stretch; gap: 1px; min-width: 0; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .editor-tab { display: flex; align-items: center; gap: 8px; min-width: 150px; max-width: 260px; padding: 0 13px; border-right: 1px solid var(--line); border-top: 2px solid var(--cyan); background: var(--canvas); color: var(--ink); font: 12px var(--mono); }
+  .editor-tab .tab-close { margin-left: auto; color: var(--muted); font: 16px var(--sans); }
+  .editor-tab-meta { display: flex; align-items: center; gap: 10px; margin-left: auto; padding: 0 14px; color: var(--muted); font-size: 11px; }
+  .editor-tab-meta .language-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 3px rgb(66 200 232 / 12%); }
+  .editor { min-width: 0; min-height: 0; display: flex; overflow: hidden; background: var(--canvas); }
+  .gutter { flex: 0 0 54px; padding: 14px 10px 14px 8px; text-align: right; user-select: none; font: 12px/21px var(--mono); color: var(--faint); background: var(--surface); border-right: 1px solid var(--line-soft); overflow: hidden; }
+  .gutter div { white-space: pre; }
+  .gutter div.has-error { color: var(--red); font-weight: 700; }
+  .gutter div.has-warn { color: var(--amber); font-weight: 700; }
+  textarea#code { flex: 1; min-width: 0; min-height: 0; border: 0; outline: 0; resize: none; padding: 14px 18px; font: 13px/21px var(--mono); background: var(--canvas); color: var(--ink); tab-size: 2; white-space: pre; overflow-wrap: normal; overflow: auto; caret-color: var(--cyan); }
+  textarea#code::selection { background: rgb(66 200 232 / 22%); }
+
+  /* Build output keeps the status ring visible while diagnostics scroll independently. */
+  .output-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--surface); }
+  .output-header { display: flex; align-items: center; min-height: 38px; border-bottom: 1px solid var(--line-soft); }
+  .output-header-meta { margin-left: auto; padding: 0 14px; color: var(--muted); font-size: 10px; }
+  .output-tabs { display: flex; align-items: stretch; height: 100%; }
+  .output-tab { min-height: 38px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font-size: 12px; }
+  .output-tab:hover:not(:disabled) { background: var(--surface-hover); color: var(--ink); }
+  .output-tab.active { border-bottom-color: var(--cyan); color: var(--cyan); }
+  .output-tab::before { margin-right: 7px; color: var(--faint); }
+  .output-tab[data-output-view="diagnostics"]::before { content: "▤"; }
+  .output-tab[data-output-view="monitor"]::before { content: ">_"; font: 11px var(--mono); }
+  .output-body { display: flex; min-height: 0; flex: 1; }
+  .output-pane { min-width: 0; min-height: 0; }
+  .diagnostics-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .monitor-pane { flex: 0 0 35%; display: flex; min-width: 220px; border-left: 1px solid var(--line-soft); }
+  .output-panel[data-view="diagnostics"] .monitor-pane { display: none; }
+  .output-panel[data-view="monitor"] .diagnostics-pane { display: none; }
+  .output-panel[data-view="monitor"] .monitor-pane { flex: 1; border-left: 0; }
+  .status-section { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 8px 14px; border-bottom: 1px solid var(--line-soft); }
+  .status-section > #mem-section { margin-left: auto; padding: 0; border: 0; }
+  .status-section > #mem-section .mem { margin-left: 0; }
+  .status-progress { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .status { min-width: 0; max-width: min(620px, 70vw); overflow-wrap: anywhere; font-size: 12px; }
+  .progress-ring { position: relative; flex: 0 0 38px; width: 38px; height: 38px; color: var(--cyan); }
+  .progress-ring svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .progress-ring circle { fill: none; stroke-width: 4; }
+  .progress-ring-track { stroke: var(--line); }
+  .progress-ring-value { stroke: currentColor; stroke-linecap: round; stroke-dasharray: 113.097; stroke-dashoffset: 113.097; transition: stroke-dashoffset .15s ease; }
+  .progress-ring-label { position: absolute; inset: 0; display: grid; place-items: center; font: 9px/1 var(--mono); color: var(--muted); pointer-events: none; }
+  .mem { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 10px; margin-left: auto; font: 11px/1.4 var(--mono); }
+  .mem .row { display: grid; grid-template-columns: 38px minmax(45px, 1fr) auto; gap: 6px; align-items: center; }
+  .mem .track { height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .mem .track > i { display: block; height: 100%; background: var(--green); }
+  .mem .track > i.high { background: var(--amber); }
+  .mem .track > i.full { background: var(--red); }
+  #diags { flex: 1; min-height: 0; overflow-y: auto; padding: 5px 0; }
+  .diag { padding: 6px 14px; border-left: 3px solid transparent; cursor: pointer; font-size: 12px; }
+  .diag:hover { background: var(--surface-hover); }
+  .diag.error { border-left-color: var(--red); }
+  .diag.warning { border-left-color: var(--amber); }
+  .diag.info { border-left-color: var(--faint); }
+  .diag .loc { font: 10px var(--mono); color: var(--muted); }
+  .diag .tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--surface-hover); color: var(--muted); margin-left: 6px; }
+  .empty { color: var(--muted); padding: 12px 14px; font-size: 12px; }
+  .monitor-pane #monitor { flex: 1; width: 100%; height: 100%; min-height: 0; overflow: auto; margin: 0; padding: 12px 14px; border: 0; font: 11px/1.55 var(--mono); background: var(--canvas); color: #b6c4d4; white-space: pre-wrap; word-break: break-all; }
+  .artifact-list { display: grid; gap: 5px; padding: 8px 14px; border-bottom: 1px solid var(--line-soft); }
+  .artifact-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+  .artifact-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px var(--mono); }
+  .artifact-row button { min-height: 25px; padding: 3px 7px; font-size: 10px; }
+  .editor-statusbar { display: flex; align-items: center; gap: 14px; padding: 0 12px; border-top: 1px solid var(--line); background: var(--surface-raised); color: var(--muted); font: 10px var(--mono); }
+  .editor-statusbar .spacer { flex: 1; }
+  .statusbar-live { display: inline-flex; align-items: center; gap: 6px; color: var(--green); }
+  .statusbar-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .statusbar-live[data-state="loading"], .statusbar-live[data-state="warning"] { color: var(--amber); }
+  .statusbar-live[data-state="error"] { color: var(--red); }
+  code { font-family: var(--mono); background: var(--surface-hover); padding: 1px 4px; border-radius: 3px; }
+
+  @media (max-width: 1050px) {
+    .topbar { gap: 8px; }
+    .topbar-divider, .project-menu { display: none; }
+    .board-picker { margin-left: 0; flex-basis: min(430px, 48vw); }
+    .top-actions { gap: 4px; }
+    .top-actions button { padding-inline: 8px; }
+    .app-main { grid-template-columns: 40px 250px minmax(0, 1fr); }
+  }
+  @media (max-width: 760px) {
+    html, body { height: auto; min-height: 100%; overflow: auto; }
+    .topbar { position: sticky; top: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; flex-basis: auto; min-height: 58px; height: auto; padding: 8px; }
+    .board-picker { grid-column: 1 / -1; grid-row: 2; width: 100%; justify-self: stretch; }
+    .topbar-spacer { display: none; }
+    .top-actions { grid-column: 3; grid-row: 1; }
+    .top-actions button { font-size: 0; min-width: 32px; padding: 5px; }
+    #btn-compile::before, #btn-flash::before, #btn-monitor::before { margin: 0; font-size: 15px; }
+    #board-config { grid-column: 2; grid-row: 1; justify-self: end; margin-right: 108px; }
+    .app-main { display: grid; grid-template-columns: 1fr; grid-template-rows: 42px auto minmax(680px, 1fr); }
+    .activity-rail { grid-column: 1; grid-row: 1; flex-direction: row; justify-content: flex-start; padding: 5px 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .rail-bottom { margin: 0 0 0 auto; display: flex; }
+    .explorer-panel { grid-column: 1; grid-row: 2; max-height: 360px; border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor-workspace { grid-column: 1; grid-row: 3; min-height: 720px; grid-template-rows: 42px minmax(300px, 1fr) 250px 27px; }
+    .editor-tab-meta { display: none; }
+    .output-body { display: block; overflow: auto; }
+    .output-panel[data-view="diagnostics"] .monitor-pane, .output-panel[data-view="monitor"] .diagnostics-pane { display: none; }
+    .output-panel[data-view="diagnostics"] .diagnostics-pane, .output-panel[data-view="monitor"] .monitor-pane { display: flex; height: 100%; }
+    .monitor-pane { min-height: 150px; }
+    .status-section { align-items: flex-start; }
+    .status-section > #mem-section { margin-left: 0; }
+    .mem { grid-template-columns: 1fr; margin-left: 0; }
+  }
+  @media (max-width: 440px) {
+    .brand-name { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+    .brand-badge { display: none; }
+    #board-config { margin-right: 88px; }
+    .menu-popover { position: fixed; top: 50px; left: 8px; width: calc(100vw - 16px); }
+    .cloud-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .cloud-row button:last-child { grid-column: 2; }
+    .library-import-form { grid-template-columns: 1fr auto; }
+    .library-import-form input:nth-child(2) { grid-column: 1; }
+    .library-import-form button { grid-column: 2; grid-row: 1 / span 2; }
+    .editor-statusbar { gap: 8px; font-size: 9px; }
+    .editor-statusbar span:nth-last-child(-n+2) { display: none; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>SketchForge <span style="color:var(--muted);font-weight:400">底座参考客户端</span></h1>
-  <select id="board"></select>
-  <button id="btn-import-project" type="button" title="Import a project folder">Import folder</button>
-  <button id="btn-add-files" type="button" title="Add source files to the project">Add files</button>
-  <button id="btn-import-archive" type="button" title="导入 SketchForge 项目文件">导入项目</button>
-  <button id="btn-export-project" type="button" title="导出 SketchForge 项目文件">导出项目</button>
-  <input id="project-folder-input" type="file" webkitdirectory directory multiple hidden>
-  <input id="project-files-input" type="file" multiple hidden accept=".ino,.c,.cc,.cpp,.cxx,.S,.s,.asm,.h,.hh,.hpp,.hxx">
-  <input id="project-archive-input" type="file" hidden accept=".json,.sketchforge.json,application/json">
-  <input id="project-id" value="default" aria-label="云项目名称" spellcheck="false">
-  <button id="btn-cloud-save" type="button" title="保存到云端">云保存</button>
-  <button id="btn-cloud-load" type="button" title="从云端恢复">云恢复</button>
+<header class="topbar">
+  <div class="brand" aria-label="SketchForge IDE">
+    <span class="brand-mark" aria-hidden="true">▦</span>
+    <span class="brand-name">SketchForge</span>
+    <span class="brand-badge">IDE</span>
+  </div>
+  <div class="topbar-divider" aria-hidden="true"></div>
+
+  <details class="project-menu">
+    <summary><span class="summary-icon" aria-hidden="true">▣</span><span>工程菜单</span><span class="chevron" aria-hidden="true">⌄</span></summary>
+    <div class="menu-popover">
+      <div class="menu-title">项目操作</div>
+      <div class="menu-actions">
+        <button id="btn-import-project" type="button" title="导入项目文件夹"><span class="button-icon" aria-hidden="true">↥</span>导入文件夹</button>
+        <button id="btn-import-archive" type="button" title="导入 SketchForge 项目文件"><span class="button-icon" aria-hidden="true">↓</span>导入项目</button>
+        <button id="btn-export-project" type="button" title="导出 SketchForge 项目文件"><span class="button-icon" aria-hidden="true">↑</span>导出项目</button>
+        <button id="btn-add-files" type="button" title="向项目添加源文件"><span class="button-icon" aria-hidden="true">＋</span>添加文件</button>
+      </div>
+      <div class="cloud-row">
+        <input id="project-id" value="default" aria-label="云项目名称" spellcheck="false">
+        <button id="btn-cloud-save" type="button" title="保存到云端">保存</button>
+        <button id="btn-cloud-load" type="button" title="从云端恢复">恢复</button>
+      </div>
+    </div>
+  </details>
+
+  <label class="board-picker" for="board">
+    <span class="board-icon" aria-hidden="true">▰</span>
+    <select id="board" aria-label="选择开发板"></select>
+  </label>
+  <div class="topbar-spacer"></div>
   <details id="board-config">
-    <summary>配置</summary>
+    <summary aria-label="编译配置" title="编译配置"><span class="summary-icon" aria-hidden="true">☷</span></summary>
     <div id="board-options"></div>
   </details>
-  <button class="primary" id="btn-compile">编译</button>
-  <button id="btn-flash" disabled>烧录到板子</button>
-  <span class="sep"></span>
-  <button id="btn-monitor">串口监视器</button>
+  <div class="top-actions">
+    <button class="primary" id="btn-compile" type="button">编译</button>
+    <button id="btn-flash" type="button" disabled>烧录</button>
+    <button id="btn-monitor" type="button">串口监视器</button>
+  </div>
+  <input id="project-folder-input" type="file" webkitdirectory directory multiple hidden>
+  <input id="project-files-input" type="file" multiple hidden accept=".ino,.c,.cc,.cpp,.cxx,.S,.s,.asm,.h,.hh,.hpp,.hxx">
+  <input id="project-archive-input" type="file" hidden accept=".json,.sketchforge.json,.arduinofast.json,application/json">
 </header>
 
-<main>
-  <div class="editor">
-    <div class="gutter" id="gutter"></div>
-    <textarea id="code" spellcheck="false"></textarea>
-  </div>
+<main class="app-main">
+  <nav class="activity-rail" aria-label="工作区">
+    <button class="rail-icon-button active" type="button" aria-label="工程资源" title="工程资源"><span class="rail-icon" aria-hidden="true">▦</span></button>
+    <button class="rail-icon-button" type="button" aria-label="库管理" title="库管理" disabled><span class="rail-icon" aria-hidden="true">♧</span></button>
+    <button class="rail-icon-button" type="button" aria-label="硬件" title="硬件" disabled><span class="rail-icon" aria-hidden="true">◫</span></button>
+    <div class="rail-bottom">
+      <button class="rail-icon-button" type="button" aria-label="设置" title="设置" disabled><span class="rail-icon" aria-hidden="true">⚙</span></button>
+    </div>
+  </nav>
 
-  <aside>
-    <div class="section">
-      <div class="project-section-heading">
-        <h2>Project files</h2>
-        <button id="btn-new-file" type="button" title="Create project file">New</button>
+  <aside class="explorer-panel">
+    <div class="sidebar-header">
+      <div><div class="eyebrow">Workspace</div><h2>工程文件</h2></div>
+      <div class="sidebar-actions">
+        <button class="icon-button" id="btn-new-file" type="button" title="新建文件" aria-label="新建文件">＋</button>
+        <button class="icon-button" id="btn-add-files-sidebar" type="button" title="添加文件" aria-label="添加文件">↥</button>
       </div>
+    </div>
+    <div class="workspace-label"><span class="file-icon" aria-hidden="true">▰</span><strong>Arduino 项目</strong><span class="dirty-dot" title="本地工作区"></span></div>
+
+    <div class="section project-section">
+      <div class="project-section-heading"><h2>源文件</h2><span class="section-meta">本地</span></div>
       <form id="project-file-editor" class="project-file-editor" hidden>
         <input id="project-file-name" maxlength="160" autocomplete="off" autocapitalize="none" spellcheck="false" required>
-        <button type="submit">Save</button>
-        <button id="btn-cancel-file-edit" type="button">Cancel</button>
+        <button type="submit">保存</button>
+        <button id="btn-cancel-file-edit" type="button">取消</button>
       </form>
       <div id="project-files" class="project-files"></div>
     </div>
 
     <div class="section library-section">
-      <h2>Library registry</h2>
+      <div class="project-section-heading"><h2>库注册表</h2><span class="section-meta">145</span></div>
       <input id="library-filter" type="search" placeholder="搜索库名称" aria-label="搜索库名称">
       <form id="library-import-form" class="library-import-form" aria-busy="false" novalidate>
-        <input id="library-repository" name="repository" maxlength="512" required
-               placeholder="owner/repo 或 GitHub URL" aria-label="GitHub 仓库"
-               autocomplete="off" autocapitalize="none" spellcheck="false">
-        <input id="library-ref" name="ref" maxlength="150" placeholder="ref（可选）"
-               aria-label="GitHub ref，可选" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <input id="library-repository" name="repository" maxlength="512" required placeholder="owner/repo 或 GitHub URL" aria-label="GitHub 仓库" autocomplete="off" autocapitalize="none" spellcheck="false">
+        <input id="library-ref" name="ref" maxlength="150" placeholder="ref（可选）" aria-label="GitHub ref，可选" autocomplete="off" autocapitalize="none" spellcheck="false">
         <button type="submit" title="从 GitHub 导入 Arduino 库">导入</button>
       </form>
       <div id="library-import-status" class="library-import-status" role="status" aria-live="polite"></div>
       <div id="library-list"><div class="empty">正在加载库目录…</div></div>
     </div>
 
-    <div class="section">
-      <h2>状态</h2>
-      <div class="status-progress">
-        <div class="progress-ring" id="progress-ring" role="progressbar"
-             aria-label="编译进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
-            <circle class="progress-ring-track" cx="20" cy="20" r="18"></circle>
-            <circle class="progress-ring-value" id="progress" cx="20" cy="20" r="18"></circle>
-          </svg>
-          <span class="progress-ring-label" id="progress-value">0%</span>
-        </div>
-        <div class="status" id="status" role="status" aria-live="polite">就绪</div>
+    <div class="sidebar-footer">
+      <div class="cloud-label">云项目 <span>可选</span></div>
+      <div class="cloud-row">
+        <input id="project-id-sidebar" value="default" aria-label="云项目名称" spellcheck="false" disabled>
+        <span class="cloud-hint">使用工程菜单保存</span>
       </div>
     </div>
-
-    <div class="section" id="mem-section" style="display:none">
-      <h2>资源占用</h2>
-      <div class="mem" id="mem"></div>
-    </div>
-
-    <div class="section" id="artifact-section" hidden>
-      <h2>固件下载</h2>
-      <div id="artifact-downloads" class="artifact-list"></div>
-    </div>
-
-    <div class="section" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:0">
-      <h2 style="padding:10px 14px 0">诊断</h2>
-      <div id="diags"><div class="empty">还没有编译过</div></div>
-    </div>
-
-    <div class="section" style="padding:0">
-      <h2 style="padding:10px 14px 0">串口输出</h2>
-      <pre id="monitor">未连接。点击「串口监视器」开始接收。</pre>
-    </div>
   </aside>
+
+  <section class="editor-workspace" aria-label="代码编辑器">
+    <div class="editor-tabs">
+      <div class="editor-tab" aria-current="page">
+        <span class="file-icon" aria-hidden="true">▣</span>
+        <span data-editor-active-file>main.ino</span>
+        <span class="tab-close" aria-hidden="true">×</span>
+      </div>
+      <div class="editor-tab-meta"><span class="language-dot" aria-hidden="true"></span>Arduino C++ <span>WASM</span></div>
+    </div>
+
+    <div class="editor">
+      <div class="gutter" id="gutter"></div>
+      <textarea id="code" spellcheck="false" aria-label="Arduino 源码编辑器"></textarea>
+    </div>
+
+    <section class="output-panel" id="output-panel" data-view="diagnostics" aria-label="编译输出">
+      <div class="output-header">
+        <div class="output-tabs" role="tablist" aria-label="输出视图">
+          <button class="output-tab active" type="button" role="tab" aria-selected="true" data-output-view="diagnostics">编译输出</button>
+          <button class="output-tab" type="button" role="tab" aria-selected="false" data-output-view="monitor">串口监视器</button>
+        </div>
+        <span class="output-header-meta">浏览器 Worker</span>
+      </div>
+      <div class="output-body">
+        <div class="output-pane diagnostics-pane" data-output-pane="diagnostics">
+          <div class="status-section">
+            <div class="status-progress">
+              <div class="progress-ring" id="progress-ring" role="progressbar" aria-label="编译进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+                  <circle class="progress-ring-track" cx="20" cy="20" r="18"></circle>
+                  <circle class="progress-ring-value" id="progress" cx="20" cy="20" r="18"></circle>
+                </svg>
+                <span class="progress-ring-label" id="progress-value">0%</span>
+              </div>
+              <div class="status" id="status" role="status" aria-live="polite">就绪</div>
+            </div>
+            <div class="section" id="mem-section" style="display:none"><div class="mem" id="mem"></div></div>
+          </div>
+          <div class="section artifact-section" id="artifact-section" hidden>
+            <h2>固件下载</h2>
+            <div id="artifact-downloads" class="artifact-list"></div>
+          </div>
+          <div id="diags"><div class="empty">还没有编译过</div></div>
+        </div>
+        <div class="output-pane monitor-pane" data-output-pane="monitor">
+          <pre id="monitor">未连接。点击「串口监视器」开始接收。</pre>
+        </div>
+      </div>
+    </section>
+
+    <div class="editor-statusbar">
+      <span class="statusbar-live" data-runtime-indicator data-state="loading">浏览器编译加载中</span>
+      <span>Arduino C++</span>
+      <span>行 1，列 1</span>
+      <span class="spacer"></span>
+      <span>UTF-8</span>
+      <span>LF</span>
+      <span>空格: 2</span>
+    </div>
+  </section>
 </main>
 
 <script src="./toolchain-origins.js"></script>
 <script type="module" src="./app.js"></script>
+<script>
+  (() => {
+    const outputPanel = document.getElementById('output-panel');
+    const tabs = [...document.querySelectorAll('[data-output-view]')];
+    const runtimeIndicator = document.querySelector('[data-runtime-indicator]');
+    const reportStartupFailure = (reason) => {
+      if (!runtimeIndicator || runtimeIndicator.dataset.state !== 'loading') return;
+      runtimeIndicator.textContent = '前端模块加载失败';
+      runtimeIndicator.dataset.state = 'error';
+      console.error('[SketchForge] Frontend startup failed.', reason);
+    };
+    window.addEventListener('error', (event) => reportStartupFailure(event.error || event.message));
+    window.addEventListener('unhandledrejection', (event) => reportStartupFailure(event.reason));
+    const setOutputView = (view) => {
+      if (!outputPanel) return;
+      outputPanel.dataset.view = view;
+      tabs.forEach((tab) => {
+        const active = tab.dataset.outputView === view;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+    };
+    tabs.forEach((tab) => tab.addEventListener('click', () => setOutputView(tab.dataset.outputView)));
+    window.addEventListener('sketchforge:show-output', (event) => setOutputView(event.detail?.view || 'diagnostics'));
+  })();
+</script>
 </body>
 </html>

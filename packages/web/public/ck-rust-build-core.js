@@ -3,7 +3,9 @@ let bindingsPromise;
 async function loadBindings() {
   if (!bindingsPromise) {
     bindingsPromise = (async () => {
-      const bindings = await import('./ck-build-core-wasm/ck_build_core.js');
+      // Runtime assets are versioned separately; defer resolution until this planner is used.
+      const bindingsUrl = new URL('./ck-build-core-wasm/ck_build_core.js', import.meta.url);
+      const bindings = await import(/* @vite-ignore */ bindingsUrl.href);
       const wasmUrl = new URL('./ck-build-core-wasm/ck_build_core_bg.wasm', import.meta.url);
       if (typeof process !== 'undefined' && process.versions?.node) {
         const { readFile } = await import('node:fs/promises');

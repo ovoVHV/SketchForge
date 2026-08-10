@@ -115,6 +115,8 @@ const libraryImportFormEl = $('library-import-form');
 const libraryRepositoryEl = $('library-repository');
 const libraryRefEl = $('library-ref');
 const libraryImportStatusEl = $('library-import-status');
+const editorActiveFileEl = document.querySelector('[data-editor-active-file]');
+const runtimeIndicatorEl = document.querySelector('[data-runtime-indicator]');
 const VISITOR_STORAGE_KEY = 'sketchforge.visitor';
 const LEGACY_VISITOR_STORAGE_KEY = 'arduinofast.visitor';
 const CLOUD_PROJECT_ID_STORAGE_KEY = 'sketchforge.cloud-project-id.v1';
@@ -205,6 +207,22 @@ const compileStageLabels = {
   size: '正在统计固件体积',
   done: '正在收集编译结果',
 };
+
+function showOutputView(view) {
+  globalThis.dispatchEvent?.(new CustomEvent('sketchforge:show-output', {
+    detail: { view },
+  }));
+}
+
+function syncEditorChrome() {
+  if (editorActiveFileEl) editorActiveFileEl.textContent = activeProjectFile || 'main.ino';
+}
+
+function setRuntimeIndicator(text, state = 'ready') {
+  if (!runtimeIndicatorEl) return;
+  runtimeIndicatorEl.textContent = text;
+  runtimeIndicatorEl.dataset.state = state;
+}
 
 function migratedStorageValue(storage, currentKey, legacyKey) {
   let current;
@@ -302,6 +320,7 @@ function persistLocalProjectState() {
 
 function renderProjectFiles() {
   if (!projectFilesEl || !projectSnapshot) return;
+  syncEditorChrome();
   projectFilesEl.innerHTML = projectSnapshot.files.map((file) => {
     const active = file.name === activeProjectFile ? ' active' : '';
     const rename = `<button class="rename" type="button" data-rename="${escapeHtml(file.name)}" title="Rename file">Rename</button>`;
@@ -323,6 +342,7 @@ function installProjectSnapshot(snapshot, active = snapshot.sketch) {
   closeProjectFileEditor();
   projectSnapshot = snapshot;
   activeProjectFile = snapshot.files.some((file) => file.name === active) ? active : snapshot.sketch;
+  syncEditorChrome();
   codeEl.value = snapshot.files.find((file) => file.name === activeProjectFile)?.content ?? '';
   renderGutter();
   renderProjectFiles();
@@ -344,6 +364,7 @@ function selectProjectFile(name) {
   if (!projectSnapshot || !projectSnapshot.files.some((file) => file.name === name)) return;
   syncActiveProjectFile();
   activeProjectFile = name;
+  syncEditorChrome();
   codeEl.value = projectSnapshot.files.find((file) => file.name === name)?.content ?? '';
   persistLocalProjectState();
   renderGutter();
@@ -1137,6 +1158,7 @@ function setContextInputsDisabled(disabled) {
   boardEl.disabled = disabled || boards.length === 0;
   $('btn-import-project').disabled = disabled;
   $('btn-add-files').disabled = disabled;
+  if ($('btn-add-files-sidebar')) $('btn-add-files-sidebar').disabled = disabled;
   if ($('btn-new-file')) $('btn-new-file').disabled = disabled;
   if ($('btn-import-archive')) $('btn-import-archive').disabled = disabled;
   if ($('btn-export-project')) $('btn-export-project').disabled = disabled;
@@ -1517,6 +1539,7 @@ async function compile() {
     return;
   }
   if (flashing) return;
+  showOutputView('diagnostics');
   cancelPendingProjectRestore();
   if (!boardStateReady || !currentBoard()) {
     setStatus('请先选择有效的板卡配置再编译', 0, 'var(--warn)');
@@ -1809,6 +1832,7 @@ function friendlyFlashError(e, baud) {
 async function toggleMonitor() {
   if (monitorOpening || flashing) return;
   if (monitorAbort) { await stopMonitor(); return; }
+  showOutputView('monitor');
   if (!webSerialSupported()) {
     monitorEl.textContent = '当前浏览器不支持 Web Serial。';
     return;
@@ -1865,6 +1889,7 @@ async function stopMonitor() {
 // ---------------------------------------------------------------------------
 
 async function init() {
+  setRuntimeIndicator('正在恢复编译记录', 'loading');
   if (projectArchiveInput) {
     projectArchiveInput.accept = [
       '.json',
@@ -1881,7 +1906,14 @@ async function init() {
     );
     if (savedProjectId && projectIdEl) projectIdEl.value = savedProjectId;
   } catch { /* optional */ }
-  const savedCompile = await loadStoredCompile();
+  const savedCompile = await withTimeout(
+    loadStoredCompile(),
+    4_000,
+    'active compile recovery',
+  ).catch((error) => {
+    console.warn('[SketchForge] Active compile recovery timed out; continuing startup.', error);
+    return null;
+  });
   const storedProject = loadProjectState(projectStateStorage)
     ?? loadProjectState(legacyProjectStateStorage, { migrationStorage: projectStateStorage });
   try {
@@ -1910,8 +1942,10 @@ async function init() {
       ...payload.boards,
       ...(Array.isArray(payload.unavailableBoards) ? payload.unavailableBoards : []),
     ];
+    setRuntimeIndicator('WASM 编译器已就绪', 'ready');
   } catch {
     projectRestoreOperations.finish(startupRestoreOperation);
+    setRuntimeIndicator('等待底座连接', 'error');
     setStatus('无法获取板子列表，底座是否已启动？', 0, 'var(--err)');
     return;
   }
@@ -1953,8 +1987,10 @@ async function init() {
   if (restoredConfigurationWarning) {
     setStatus(restoredConfigurationWarning, 0, 'var(--warn)');
   } else if (!boards.some((board) => board.available !== false)) {
+    setRuntimeIndicator('等待服务端 Worker', 'warning');
     setStatus('服务端编译 worker 未就绪，可用板卡仍会优先尝试浏览器编译', 0, 'var(--warn)');
   } else if (!webSerialSupported()) {
+    setRuntimeIndicator('WASM 就绪 · Web Serial 不可用', 'warning');
     setStatus('就绪（当前浏览器不支持 Web Serial，可编译但不能烧录）', 0, 'var(--warn)');
   }
 }
@@ -1984,6 +2020,7 @@ function bindUiEvents() {
   libraryImportFormEl?.addEventListener('submit', (event) => { void importUnknownGitHubLibrary(event); });
   $('btn-import-project').addEventListener('click', () => projectFolderInput?.click());
   $('btn-add-files').addEventListener('click', () => projectFilesInput?.click());
+  $('btn-add-files-sidebar')?.addEventListener('click', () => projectFilesInput?.click());
   $('btn-new-file')?.addEventListener('click', () => openProjectFileEditor());
   $('btn-cancel-file-edit')?.addEventListener('click', closeProjectFileEditor);
   projectFileEditorForm?.addEventListener('submit', submitProjectFileEdit);

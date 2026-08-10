@@ -165,7 +165,7 @@ describe('app P1 workflow wiring', () => {
     expect(storeCompile).not.toMatch(/(?:localStorage|sessionStorage|setItem)\b/);
   });
 
-  it('awaits durable recovery once and conditionally clears records by job id', () => {
+  it('awaits bounded durable recovery and conditionally clears records by job id', () => {
     const init = sourceSection('async function init()', 'function bindUiEvents()');
     const clearStoredCompile = sourceSection(
       'function clearStoredCompile(run)',
@@ -176,7 +176,9 @@ describe('app P1 workflow wiring', () => {
       'async function cancelRemoteCompile(run)',
     );
 
-    expect(init).toMatch(/const\s+savedCompile\s*=\s*await\s+loadStoredCompile\(\)/);
+    expect(init).toMatch(
+      /const\s+savedCompile\s*=\s*await\s+withTimeout\(\s*loadStoredCompile\(\),\s*4_000,\s*'active compile recovery',\s*\)\.catch\(/,
+    );
     expect(init).toMatch(/const\s+startupRestoreOperation\s*=\s*projectRestoreOperations\.begin\(\)/);
     expect(init).toMatch(/restoreStoredCompile\(savedCompile,\s*startupRestoreOperation\)/);
     expect(clearStoredCompile).toMatch(/activeCompilePersistence\.delete\(run\.jobId,\s*run\.acceptanceId\)/);

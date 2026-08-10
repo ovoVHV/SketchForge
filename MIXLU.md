@@ -1,6 +1,6 @@
 # MIXLU Project Progress
 
-Last updated: 2026-08-10 10:06:01 +08:00
+Last updated: 2026-08-10 12:59:21 +08:00
 
 This file is the public progress snapshot. It contains no server credentials,
 private keys, deployment passwords, or private operational paths.
@@ -33,6 +33,7 @@ the full Arduino CLI locally.
 | Project recovery, cancellation, and progress feedback | Complete | 100% | Per-tab recovery, cancellation handles, SSE stages, and visible progress wiring are included |
 | Source release hygiene | Complete | 100% | Apache-2.0, notices, source audit, package metadata, and sensitive-file exclusions are present |
 | SketchForge rename and public documentation | Complete | 100% | Source identifiers, UI labels, README, support matrix, and compatibility migration are updated |
+| 16-way unique-source browser concurrency | Complete | 100% | One browser session compiled 16 different ESP32 sketches successfully (`16/16`), with a roughly 59-second full overlap window |
 | Automated hardware runner | Pending | 0% | Browser Web Serial already works; CI hardware automation is intentionally left for a later stage |
 
 ## Published browser targets
@@ -57,10 +58,37 @@ the full Arduino CLI locally.
 - Web Serial is a direct browser-to-device flow requiring explicit permission;
   the server is not a USB bridge.
 
+## Browser concurrency evidence
+
+- The 2026-08-10 test used 16 unique sketches with actually called per-task
+  `volatile` symbols, so identical source fingerprints could not explain the
+  result. ESP32, C3, C6, S2, and S3 targets were mixed across the 16 tabs.
+- All 16 builds succeeded. Page-reported compile times were approximately
+  59-113 seconds, and the first and last requests were started within about
+  2.3 seconds.
+- This is browser-side capacity under warm immutable asset conditions. It is
+  not evidence of 16 server workers, a completely cold download, or a promise
+  of 1,000 simultaneous first-time users.
+
+## Concurrency plan
+
+1. Keep the browser-first path as the default so visitor devices carry most
+   compile CPU.
+2. Publish immutable compiler and Board Pack assets through a digest-addressed
+   CDN with prefetching and long-lived browser caching.
+3. Put server fallback behind Redis/BullMQ queues and separate AVR, Xtensa,
+   and RISC-V Worker pools.
+4. Scale matching Workers from queue depth and CPU/memory pressure, isolate
+   every job in a temporary directory, and enforce quotas, cancellation,
+   timeouts, idempotency, and bounded retries.
+
 ## Remaining work
 
 1. Publish and document the matching immutable runtime assets for fresh clones.
 2. Add the retained board Packs and expand the verified library matrix.
 3. Provision and validate a separate server Worker topology for unsupported
-   browser targets and server-side fallback.
-4. Add an automated real hardware runner and record repeatable board evidence.
+   browser targets and server-side fallback, including cold-start and queue
+   pressure tests.
+4. Put the large runtime assets behind a CDN and test weak devices and cold
+   cache downloads.
+5. Add an automated real hardware runner and record repeatable board evidence.
