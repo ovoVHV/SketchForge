@@ -1060,12 +1060,14 @@ function setProgressIndeterminate(active) {
     progressRingEl.setAttribute('aria-busy', 'true');
     progressRingEl.removeAttribute('aria-valuenow');
     progressRingEl.setAttribute('aria-valuetext', '正在加载编译资产');
+    statusEl.setAttribute('aria-live', 'off');
     progressValueEl.textContent = '...';
     return;
   }
   delete progressRingEl.dataset.indeterminate;
   progressRingEl.removeAttribute('aria-busy');
   progressRingEl.removeAttribute('aria-valuetext');
+  statusEl.setAttribute('aria-live', 'polite');
 }
 
 function setStatus(text, pct = null, color = null) {
@@ -1686,7 +1688,12 @@ async function compile() {
   };
   try {
     browserBuild = await compileInBrowser(body, onBrowserProgress, { signal: run.controller.signal });
-    if (shouldRetryBrowserAssetBuild(browserBuild, run.browserStage, browserAssetAttempt, context.board)) {
+    if (
+      !run.controller.signal.aborted
+      && activeCompile === run
+      && currentCompileContextKey() === run.key
+      && shouldRetryBrowserAssetBuild(browserBuild, run.browserStage, browserAssetAttempt, context.board)
+    ) {
       browserAssetAttempt += 1;
       console.warn('[SketchForge] Browser compile assets failed; retrying once.', browserBuild.error);
       browserProgress.report({ stage: 'assets', percent: 0, detail: '连接中断，正在自动重试 1/1' });

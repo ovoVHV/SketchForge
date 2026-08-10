@@ -35,6 +35,7 @@ export function shouldRetryBrowserAssetBuild(browserBuild, lastStage, attempt = 
     && board.startsWith('esp32:')
     && browserBuild?.handled === false
     && browserBuild.reason === 'assets'
+    && browserBuild.retryable === true
     && (lastStage == null || lastStage === 'assets');
 }
 
@@ -80,12 +81,13 @@ export function createBrowserCompileProgressReporter({
         return;
       }
       assetDetail = typeof detail === 'string' ? detail : '';
+      const started = assetTimer === null;
       if (assetTimer === null) {
         assetStartedAt = now();
         assetTimer = setIntervalFn(renderAssets, 1_000);
       }
-      onIndeterminateChange(true);
       renderAssets();
+      if (started) onIndeterminateChange(true);
     },
     dispose() {
       clearAssetTimer();

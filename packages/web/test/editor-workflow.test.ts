@@ -36,12 +36,13 @@ describe('editor workflow boundaries', () => {
   });
 
   it('retries only a first browser asset-stage failure', () => {
-    const failedAssets = { handled: false, reason: 'assets' };
+    const failedAssets = { handled: false, reason: 'assets', retryable: true };
     expect(shouldRetryBrowserAssetBuild(failedAssets, null, 0, 'esp32:esp32:esp32')).toBe(true);
     expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 0, 'esp32:esp32:esp32c3')).toBe(true);
     expect(shouldRetryBrowserAssetBuild(failedAssets, 'compiling', 0, 'esp32:esp32:esp32')).toBe(false);
     expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 1, 'esp32:esp32:esp32')).toBe(false);
     expect(shouldRetryBrowserAssetBuild(failedAssets, 'assets', 0, 'arduino:avr:uno')).toBe(false);
+    expect(shouldRetryBrowserAssetBuild({ handled: false, reason: 'assets' }, 'assets', 0, 'esp32:esp32:esp32')).toBe(false);
     expect(shouldRetryBrowserAssetBuild({ handled: false, reason: 'libraries' }, 'assets', 0, 'esp32:esp32:esp32')).toBe(false);
   });
 

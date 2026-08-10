@@ -34,7 +34,7 @@ describe('app P1 workflow wiring', () => {
 
   it('keeps browser asset loading alive and retries one transient asset-stage failure', () => {
     expect(appSource).toMatch(/createBrowserCompileProgressReporter\s*\(\s*\{/);
-    expect(appSource).toMatch(/shouldRetryBrowserAssetBuild\(browserBuild,\s*run\.browserStage,\s*browserAssetAttempt,\s*context\.board\)/);
+    expect(appSource).toMatch(/!run\.controller\.signal\.aborted[\s\S]*activeCompile === run[\s\S]*currentCompileContextKey\(\) === run\.key[\s\S]*shouldRetryBrowserAssetBuild\(browserBuild,\s*run\.browserStage,\s*browserAssetAttempt,\s*context\.board\)/);
     expect(appSource).toMatch(/run\.browserProgress\?\.dispose\(\)/);
     expect(appSource).toMatch(/activeCompile\.browserProgress\?\.dispose\(\)/);
     expect(appSource).toContain('连接中断，正在自动重试 1/1');

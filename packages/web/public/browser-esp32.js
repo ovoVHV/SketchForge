@@ -330,7 +330,12 @@ export async function compileEsp32InBrowser(request, onProgress = () => {}, { si
   } catch (error) {
     if (signal?.aborted || error?.code === 'aborted') return cancelledBrowserBuild(started);
     try { progress({ stage: 'fallback', percent: 0, detail: 'browser runtime unavailable' }); } catch { /* Progress is advisory. */ }
-    return { handled: false, reason: browserFallbackReason(error), error };
+    return {
+      handled: false,
+      reason: browserFallbackReason(error),
+      retryable: browserAssetErrorRetryable(error),
+      error,
+    };
   }
 }
 
@@ -847,6 +852,21 @@ async function adaptEsp32Artifact(artifact) {
 function browserFallbackReason(error) {
   if (error?.code === 'resource_limit') return 'device_memory';
   return 'assets';
+}
+
+function browserAssetErrorRetryable(error) {
+  if (error?.retryable === true) return true;
+  if (error?.retryable === false) return false;
+  if (['aborted', 'resource_limit', 'timeout', 'worker_error', 'worker_protocol', 'worker_post'].includes(error?.code)) {
+    return false;
+  }
+  const status = Number(error?.status ?? String(error?.message ?? '').match(/\bHTTP\s+(\d{3})\b/i)?.[1]);
+  if (Number.isInteger(status)) return status === 408 || status === 429 || (status >= 500 && status <= 599);
+  const message = String(error?.message ?? '').toLowerCase();
+  if (/(checksum mismatch|invalid|unexpected|not valid|not published|not release-pinned|identity does not match|exceeds|unsupported|missing)/i.test(message)) {
+    return false;
+  }
+  return true;
 }
 
 function normalizedTimings(value, started) {

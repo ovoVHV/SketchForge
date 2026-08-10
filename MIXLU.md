@@ -1,6 +1,6 @@
 # MIXLU Project Progress
 
-Last updated: 2026-08-10 19:19:47 +08:00
+Last updated: 2026-08-10 19:44:37 +08:00
 
 This file is the public progress snapshot. It contains no server credentials,
 private keys, deployment passwords, or private operational paths.
@@ -73,6 +73,21 @@ the full Arduino CLI locally.
 - The public repository commit `d062eefb15a0849e5fb6aca2a95ad8991106e5a1`
   is on `main`; GitHub Actions Source checks run `31357358066` completed with
   `success`.
+
+## Browser asset-stage feedback
+
+- The editor now shows a continuously changing elapsed-seconds message while
+  CK Platform and Library Packs are being resolved. The ring is explicitly
+  indeterminate, so the UI does not invent a percentage before real build
+  actions report one.
+- A single automatic retry is available only for an ESP32 asset-stage failure
+  marked transient. Checksum, manifest, protocol, timeout, AVR, and second
+  failures keep their original fallback behavior. Editing or cancelling a
+  project cannot restart an obsolete compile.
+- The visual timer is quiet for assistive-technology live announcements while
+  it ticks, then restores the normal polite status channel at the next real
+  stage. Focused tests cover timer cleanup, elapsed updates, retry bounds, and
+  stale-run protection.
 
 ## Concurrency plan
 
